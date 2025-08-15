@@ -16,7 +16,7 @@ CFLAGS = -Ofast -G0 -Wall -fno-pic -DBUILD_PRX=1 \
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti  -std=c++11
 ASFLAGS = $(CFLAGS)
 
-LIBS = -lpsppower -lpspgum -lpspgu -lm
+LIBS = -lpsppower -lpspgu -lm
 
 PSP_EBOOT_SFO = $(BINOUT)PARAM.SFO
 EXTRA_TARGETS = $(BINOUT)EBOOT.PBP

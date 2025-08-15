@@ -76,7 +76,7 @@ void processGuLayers() {
   sceGuStart(GU_DIRECT, list);
 
   // Set up canvas layers
-  sceGuDrawBuffer(GU_PSM_8888, (void*)MUL_BASE_TEXT, 4);    
+  sceGuDrawBuffer(GU_PSM_8888, (void*)MUL_BASE_TEXT, 64);
   sceGuScissor(0, 0, 4, 1);
   sceGuEnable(GU_SCISSOR_TEST);
   
@@ -150,7 +150,7 @@ int main() {
     sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
     sceGuTexImage(0, 4, 1, 4, tex);
 
-    sceGumDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, 0, sprite);
+    sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, 0, sprite);
     sceGuTexSync();
     
     sceGuFinish();
