@@ -1,2 +1,1 @@
-# PSPGU Multi Texturing With Alpha Variation
-
+# PSPGU PSPGE - TRICKS
