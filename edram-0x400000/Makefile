@@ -14,14 +14,15 @@ OBJS = $(notdir $(patsubst %.cpp, %.o, $(patsubst %.S, %.o, $(PATHFILES))))
 OBJS := $(sort $(OBJS:%.o=$(PATHOBJS)%.o))
 
 PSPSDK = $(shell psp-config --pspsdk-path)
+PSPDEV = $(shell psp-config --pspdev-path)
 
-CFLAGS = -I. -I$(PSPSDK)/include -I/usr/local/pspdev/psp/sdk/include -Ofast -G0 -Wall -fno-pic \
+CFLAGS = -I. -I$(PSPSDK)/include -I$(PSPDEV)/psp/sdk/include -Ofast -G0 -Wall -fno-pic \
          -I./kernel/src -D_PSP_FW_VERSION=660 \
          -Wextra -Werror
 
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -std=c++11
 ASFLAGS = $(CFLAGS) -x assembler-with-cpp
-LDFLAGS = -L. -L$(PSPSDK)/lib -L/usr/local/pspdev/psp/sdk/lib
+LDFLAGS = -L. -L$(PSPSDK)/lib -L$(PSPDEV)/psp/sdk/lib
 
 LIBS = -lpsppower -lpspdebug -lpspdisplay -lpspgu -lpspge -lpspctrl \
        -lpspsdk -lc -lpspuser -lpspkernel -lm
@@ -36,7 +37,7 @@ all: kernel $(TARGET).elf $(BINOUT)EBOOT.PBP
 kernel:
 	$(MAKE) -C ./kernel
 
-kcall.S: kernel
+wrap.S: kernel
 	@
 
 $(TARGET).elf: $(OBJS)
@@ -58,5 +59,5 @@ $(BINOUT)EBOOT.PBP: $(TARGET).elf
 	rm -f $(TARGET)_strip.elf
 
 clean:
-	-rm -f $(TARGET).elf $(TARGET).prx $(OBJS) $(BINOUT)EBOOT.PBP $(PSP_EBOOT_SFO) kcall.S $(BINOUT)kcall.prx
+	-rm -f $(TARGET).elf $(TARGET).prx $(OBJS) $(BINOUT)EBOOT.PBP $(PSP_EBOOT_SFO) wrap.S $(BINOUT)wrap.prx
 	$(MAKE) -C ./kernel clean

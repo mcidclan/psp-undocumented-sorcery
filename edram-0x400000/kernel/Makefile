@@ -3,10 +3,12 @@ PATHSRC = ./src/
 TARGET_NAME = wrap
 TARGET = $(BINOUT)$(TARGET_NAME)
 CC = psp-gcc
+
 PSPSDK = $(shell psp-config --pspsdk-path)
+
 CFLAGS = -fsingle-precision-constant -Ofast -G0 -Wall -I$(PSPSDK)/include
 ASFLAGS = -x assembler-with-cpp $(CFLAGS)
-LDFLAGS = -Wl,-q,-T$(PSPSDK)/lib/linkfile.prx -nostartfiles -Wl,-zmax-page-size=128
+LDFLAGS = -Wl,-q,-T$(PSPSDK)/lib/linkfile.prx -nostartfiles -Wl,-zmax-page-size=128 -L$(PSPSDK)/lib
 
 release: all
 	psp-build-exports -s $(PATHSRC)exports.exp && \
@@ -20,12 +22,14 @@ OBJS = $(notdir $(patsubst %.c, %.o, $(patsubst %.S, %.o, $(PATHFILES))))
 OBJS := $(sort $(OBJS:%.o=$(BINOUT)%.o))
 OBJS += $(BINOUT)exports.o
 
+LIBS =
+
 FINAL_TARGET = $(TARGET).prx
 
 all: $(FINAL_TARGET)
 
 $(TARGET).elf: $(OBJS)
-	$(CC) $(LDFLAGS) $^ -o $@
+	$(CC) $(LDFLAGS) $^ -o $@ $(LIBS)
 
 %.prx: %.elf
 	psp-prxgen $< $@
