@@ -15,5 +15,7 @@ Use the directional pad to move over the image.
 Use triangle and cross to zoom in or out.  
 Use Home to exit.  
 
+## Disclamer
+This project and code are provided as-is without warranty. Users assume full responsibility for any implementation or consequences. Use at your own discretion and risk
 
 *m-c/d*

@@ -10,3 +10,8 @@ sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
 The trick lies in the fact that, using the gu, the **alpha component** of 32-bit or 16-bit colors is used as storage for **stencil bits**. By taking this into account, we can manipulate these bits (through `sceGuPixelMask` and stencil clears) to affect the alpha component.
 
 Note: This has been tested on real hardware (PSP Slim) and debug information may not display correctly in emulators.
+
+## Disclamer
+This project and code are provided as-is without warranty. Users assume full responsibility for any implementation or consequences. Use at your own discretion and risk
+
+*m-c/d*

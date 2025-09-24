@@ -6,4 +6,7 @@ The idea here is to demonstrate how to use CSA while using CLUT. Here we set up 
 1. Compile the code using `make clean; make;`.
 2. Run the binary on a PSP (recommended over using an emulator).
 
+## Disclamer
+This project and code are provided as-is without warranty. Users assume full responsibility for any implementation or consequences. Use at your own discretion and risk
+
 *m-c/d*

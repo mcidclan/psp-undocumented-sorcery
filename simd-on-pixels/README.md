@@ -25,4 +25,7 @@ On the other hand, while in any pixel format mode, the GE seems to process blend
 
 A solution would be to let a padding and process 32bits in bytes columns, which would not be bad as an alternative approach. Instead of fighting against the RGB pipeline limitations, we adapt to its natural structure.
 
+## Disclamer
+This project and code are provided as-is without warranty. Users assume full responsibility for any implementation or consequences. Use at your own discretion and risk
+
 *m-c/d*
