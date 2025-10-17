@@ -3,7 +3,15 @@ PATHSRC = ./
 PATHOBJS = $(BINOUT)
 TARGET = $(BINOUT)mod
 
-CPP_FILES = $(wildcard $(PATHSRC)*.cpp)
+MODE ?= 565
+
+ifeq ($(MODE),565)
+MAIN = main_565
+else
+MAIN = main_gu_points
+endif
+
+CPP_FILES = $(MAIN).cpp
 PATHFILES = $(CPP_FILES) $(S_FILES)
 
 OBJS = $(notdir $(patsubst %.cpp, %.o, $(patsubst %.S, %.o, $(PATHFILES))))
@@ -20,7 +28,7 @@ LIBS = -lpsppower -lpspgu -lm
 PSP_EBOOT_SFO = $(BINOUT)PARAM.SFO
 EXTRA_TARGETS = $(BINOUT)EBOOT.PBP
 PSP_EBOOT = $(EXTRA_TARGETS)
-PSP_EBOOT_TITLE = Bewitched Texture
+PSP_EBOOT_TITLE = Bewitched $(MODE) Texture
 
 PSPSDK=$(shell psp-config --pspsdk-path)
 include $(PSPSDK)/lib/build.mak

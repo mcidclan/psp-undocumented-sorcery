@@ -99,9 +99,6 @@ u32* mixBewitchedTexture(const u8* const bList, const u32* const tex) {
   static u32 bBaseOffset = 0;
 
   const u32 buffer = MIXTURE_BASE + bBaseOffset;
-
-  PspGeContext context __attribute__((aligned(16)));
-  sceGeSaveContext(&context);
   
   sceGuStart(GU_DIRECT, list);
   
@@ -110,22 +107,20 @@ u32* mixBewitchedTexture(const u8* const bList, const u32* const tex) {
   sceGuEnable(GU_SCISSOR_TEST);
   sceGuClearColor(0);
   
-  sceGuEnable(GU_BLEND);
-
   sceGuSendCommandi(CMD_CLEAR, (3 << 8) | 1);
   sceGuCallList(bList);
   sceGuSendCommandi(CMD_CLEAR, 0);
   
+  sceGuEnable(GU_BLEND);
   sceGuEnable(GU_TEXTURE_2D);
+  
   sceGuTexImage(0, 16, 16, 16, tex);
   sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
   GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, bSprite);
 
   sceGuFinish();
   sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
-  
-  sceGeRestoreContext(&context);
-  
+    
   bBaseOffset += 64*64*4;
   return (u32*)(0x04000000 | buffer);
 }

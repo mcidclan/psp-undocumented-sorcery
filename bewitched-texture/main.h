@@ -19,11 +19,12 @@ struct Vertex {
   u16 x, y, z;
 } __attribute__((aligned(4), packed));
 
+#if MODE == GU_POINTS 
 struct PointVert {
-  // u16 u, v;
   u32 color;
   u16 x, y, z;
 } __attribute__((aligned(4), packed));
+#endif
 
 #define SCR_WIDTH       480
 #define SCR_HEIGHT      272
@@ -34,5 +35,3 @@ struct PointVert {
 #define MIXTURE_BASE    0x178000
 
 #define CMD_CLEAR       0xd3
-// #define LOGICAL_AND     0x01
-// #define LOGICAL_OR      0x07
