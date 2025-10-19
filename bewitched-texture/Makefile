@@ -3,12 +3,16 @@ PATHSRC = ./
 PATHOBJS = $(BINOUT)
 TARGET = $(BINOUT)mod
 
-MODE ?= 565
+GP_MODE = 0
+GU_POINTS = 1
 
 ifeq ($(MODE),565)
 MAIN = main_565
-else
+else ifeq ($(MODE),GU_POINTS)
 MAIN = main_gu_points
+GP_MODE = $(GU_POINTS)
+else
+MAIN = main
 endif
 
 CPP_FILES = $(MAIN).cpp
@@ -18,7 +22,7 @@ OBJS = $(notdir $(patsubst %.cpp, %.o, $(patsubst %.S, %.o, $(PATHFILES))))
 OBJS := $(sort $(OBJS:%.o=$(PATHOBJS)%.o))
 
 CFLAGS = -Ofast -G0 -Wall -fno-pic -DBUILD_PRX=1 \
-         -Wextra -Werror
+         -Wextra -Werror -DMODE=$(GP_MODE) -DGU_POINTS_MODE=$(GU_POINTS)
 
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti  -std=c++11
 ASFLAGS = $(CFLAGS)

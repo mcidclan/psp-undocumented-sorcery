@@ -11,15 +11,16 @@
 
 #define u8 unsigned char
 #define u16 unsigned short int
+#define s16 short int
 #define u32 unsigned int
 
 struct Vertex {
   u16 u, v;
   u32 color;
-  u16 x, y, z;
+  s16 x, y, z;
 } __attribute__((aligned(4), packed));
 
-#if MODE == GU_POINTS 
+#if MODE == GU_POINTS_MODE
 struct PointVert {
   u32 color;
   u16 x, y, z;
