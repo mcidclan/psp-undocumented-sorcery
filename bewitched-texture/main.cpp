@@ -129,7 +129,7 @@ u32* produceBewitchedBlending(u32* const tex0, u32* const tex1, u32* const alpha
 
     sceGuDrawBuffer(GU_PSM_8888, (void*)(buffer[1]), 64);
     sceGuScissor(0, 0, 16, 16);
-    sceGuClearStencil(0xFF);
+    sceGuClearStencil(128/*0xFF*/);
     sceGuClear(GU_STENCIL_BUFFER_BIT | GU_COLOR_BUFFER_BIT);
     sceGuTexImage(0, 16, 16, 64, (void*)(0x04000000 | buffer[3]));
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
