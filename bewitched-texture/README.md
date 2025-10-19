@@ -1,4 +1,4 @@
-# PSP Bewitched Texture Trick
+# PSP Bewitched Texture Blending
 
 This repo demonstrates **three different approaches** to bypassing PSPGU's alpha channel write limitations. All methods force alpha channel values to be set, however with limitations. Indeed, the alpha output for 565 and GU_POINTS methods will be that of the controlling texture, which we refer to here as the "bewitched texture". And the Isolated alpha method will require several texture processing passes and tricks to achieve true alpha blending.
 
@@ -21,6 +21,12 @@ make clean; make;                                   # Compile with Isolated Alph
 make MODE=565 clean; make MODE=565;                 # Compile with RGB565 method
 make MODE=GU_POINTS clean; make MODE=GU_POINTS;     # Compile with GU_POINTS method
 ```
+
+## Running The Project
+
+All samples have been tested on Slim, and the main one (Isolated Alpha) has been tested on Fat and 3000 in addition to Slim.  
+  
+***Do not test this on an emulator as the results may not be as expected.***  
 
 ## Disclaimer
 
