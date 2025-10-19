@@ -75,7 +75,8 @@ Vertex __attribute__((aligned(4))) bSprites[6] = {
 #define leftShift565    &(bSprites[2])
 #define bSprite         &(bSprites[4])
 
-u32* produceBewitchedBlending(u32* const tex0, u32* const tex1, u32* const alpha) {
+u32* produceBewitchedBlending(const u32* const tex0, const u32* const tex1,
+  const u32 alphaIntensity, const int alphaConstant) {
   
   const u32 buffer[4] = {
     MIXTURE_BASE,
@@ -93,14 +94,14 @@ u32* produceBewitchedBlending(u32* const tex0, u32* const tex1, u32* const alpha
   sceGuEnable(GU_SCISSOR_TEST);
   sceGuEnable(GU_TEXTURE_2D);
 
-  // force alpha value if alpha param is set
-  if (alpha == NULL) {
+  // force alpha value if alphaConstant param >= 0
+  if (alphaConstant < 0) {
 
     // shift alpha components to green channel
     sceGuTexMode(GU_PSM_5650, 0, 1, 0);
 
     // shifting over texture 0
-    sceGuDrawBuffer(GU_PSM_5650, (void*)(buffer[2]), 128);
+    sceGuDrawBuffer(GU_PSM_5650, (void*)(buffer[0]), 128);
     sceGuScissor(0, 0, 32, 32);
     sceGuClear(GU_COLOR_BUFFER_BIT);
     sceGuTexImage(0, 32, 32, 32, tex0);
@@ -108,38 +109,23 @@ u32* produceBewitchedBlending(u32* const tex0, u32* const tex1, u32* const alpha
     GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, leftShift565);  
 
     // shifting over texture 1
-    sceGuDrawBuffer(GU_PSM_5650, (void*)(buffer[3]), 128);
+    sceGuDrawBuffer(GU_PSM_5650, (void*)(buffer[1]), 128);
     sceGuScissor(0, 0, 32, 32);
     sceGuClear(GU_COLOR_BUFFER_BIT);
     sceGuTexImage(0, 32, 32, 32, tex1);
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
     GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, leftShift565);
     
-
-    // forcing texture alpha to be 1 before blending green component as our produced real alpha
-    sceGuTexMode(GU_PSM_8888, 0, 1, 0);
-
-    sceGuDrawBuffer(GU_PSM_8888, (void*)(buffer[0]), 64);
-    sceGuScissor(0, 0, 16, 16);
-    sceGuClearStencil(0xFF);
-    sceGuClear(GU_STENCIL_BUFFER_BIT | GU_COLOR_BUFFER_BIT);
-    sceGuTexImage(0, 16, 16, 64, (void*)(0x04000000 | buffer[2]));
-    sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
-    GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, bSprite);
-
-    sceGuDrawBuffer(GU_PSM_8888, (void*)(buffer[1]), 64);
-    sceGuScissor(0, 0, 16, 16);
-    sceGuClearStencil(128/*0xFF*/);
-    sceGuClear(GU_STENCIL_BUFFER_BIT | GU_COLOR_BUFFER_BIT);
-    sceGuTexImage(0, 16, 16, 64, (void*)(0x04000000 | buffer[3]));
-    sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
-    GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, bSprite);
-
+    sceGuTexSync();
     
-    // blend alpha components of texture 0 and texture 1 through green channel
+    
+    // forcing alpha before blending the green component as our produced real alpha
+    // then blend alpha components of texture 0 and texture 1 through green channel
     sceGuTexMode(GU_PSM_8888, 0, 1, 0);
     sceGuEnable(GU_BLEND);
-    
+    const u32 fix = (alphaIntensity << 8);
+    sceGuBlendFunc(GU_ADD, GU_FIX, GU_FIX, fix, fix);
+
     sceGuDrawBuffer(GU_PSM_8888, (void*)(buffer[2]), 64);
     sceGuScissor(0, 0, 16, 16);
     sceGuClear(GU_COLOR_BUFFER_BIT);
@@ -151,6 +137,8 @@ u32* produceBewitchedBlending(u32* const tex0, u32* const tex1, u32* const alpha
     sceGuTexImage(0, 16, 16, 64, (void*)(0x04000000 | buffer[1]));
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
     GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, bSprite);
+    
+    sceGuTexSync();
 
 
     // shift back the final alpha component
@@ -165,17 +153,19 @@ u32* produceBewitchedBlending(u32* const tex0, u32* const tex1, u32* const alpha
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
     GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, rightShift565);
 
+    sceGuTexSync();
   }
 
   // blend RGB components of texture 0 and texture 1
   sceGuTexMode(GU_PSM_8888, 0, 1, 0);
   sceGuEnable(GU_BLEND);
-  
+  sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
+
   sceGuDrawBuffer(GU_PSM_8888, (void*)(buffer[0]), 64);
   sceGuScissor(0, 0, 16, 16);
   
-  if (alpha != NULL) {
-    sceGuClearStencil(*alpha);
+  if (alphaConstant >= 0) {
+    sceGuClearStencil(0xFF);
     sceGuClear(GU_STENCIL_BUFFER_BIT | GU_COLOR_BUFFER_BIT);
   } else {
     sceGuClear(GU_COLOR_BUFFER_BIT);
@@ -188,7 +178,8 @@ u32* produceBewitchedBlending(u32* const tex0, u32* const tex1, u32* const alpha
   sceGuTexImage(0, 16, 16, 16, tex1);
   sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
   GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, bSprite);
-
+  
+  sceGuTexSync();
 
   sceGuFinish();
   sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
@@ -224,16 +215,17 @@ int main() {
   int buff = DRAW_BUF_0;
   
   pspDebugScreenInitEx(0x0, PSP_DISPLAY_PIXEL_FORMAT_8888, 0);
+  pspDebugScreenSetTextColor(0);
   pspDebugScreenEnableBackColor(0);
   pspDebugScreenSetOffset(buff);
   
   u32* const bTex0 = (u32*)memalign(16, BTEX_BYTE_COUNT);
-  u32* const bTex = produceBewitchedBlending(tex0, tex1, NULL);
+  u32* const bTex = produceBewitchedBlending(tex0, tex1, 128, -1);
   
   memcpy(bTex0, bTex, BTEX_BYTE_COUNT);
   sceKernelDcacheWritebackInvalidateRange(bTex0, (BTEX_BYTE_COUNT + 63) & ~63);
    
-  u32* const bTex1 = produceBewitchedBlending(tex1, tex0, NULL);
+  u32* const bTex1 = produceBewitchedBlending(tex1, tex0, 128, -1);
   
   guConfig(1);
 
