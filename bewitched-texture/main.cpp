@@ -43,7 +43,7 @@ void guConfig(const int id) {
   
       sceGuDrawBuffer(GU_PSM_8888, (void*)DRAW_BUF_0, BUF_WIDTH);
       sceGuDisable(GU_SCISSOR_TEST);
-      sceGuClearColor(0xFF504040);
+      sceGuClearColor(0xFF5a4c35);
       sceGuEnable(GU_TEXTURE_2D);
       sceGuEnable(GU_BLEND);
       
@@ -186,7 +186,7 @@ u32* produceBewitchedBlending(const u32* const tex0, const u32* const tex1,
   
   sceGeRestoreContext(&context);
   
-  return (u32*)(0x04000000 | buffer[0]);
+  return (u32*)(0x44000000 | buffer[0]);
 }
 
 #define SPRITE_SIZE 128
@@ -209,6 +209,9 @@ int main() {
   if (!tex0 || !tex1) {
     sceKernelExitGame();
   }
+
+  sceKernelDcacheWritebackRange(tex0, (w0 * h0 * 4 + 63) & ~63);
+  sceKernelDcacheWritebackRange(tex1, (w1 * h1 * 4 + 63) & ~63);
   
   guConfig(0);
   
@@ -245,12 +248,15 @@ int main() {
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
     GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, sprite1);
     
+    sceGuTexSync();
+
     sceGuFinish();
     sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
     
-    pspDebugScreenSetXY(0, 20);
-    pspDebugScreenPrintf("bTex0 pixel debug %x \n", bTex0[0]);
-    pspDebugScreenPrintf("bTex1 pixel debug %x \n", bTex1[0]);
+    pspDebugScreenSetXY(1, 20);
+    pspDebugScreenPrintf("bTex0 pixel debug %x", bTex0[0]);
+    pspDebugScreenSetXY(1, 21);
+    pspDebugScreenPrintf("bTex1 pixel debug %x", bTex1[0]);
 
     const u32 offset = (buff == DRAW_BUF_0) ? DRAW_BUF_1 : DRAW_BUF_0;
     pspDebugScreenSetOffset(offset);
