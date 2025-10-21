@@ -7,8 +7,5 @@ This project and code are provided as-is without warranty. Users assume full res
 
 ## Additional Related Work
 
-- [gu-multi-texturing](https://github.com/mcidclan/gu-multi-texturing)  
-  PSPGU multi-texturing sample code.
-
 - [gu-printf](https://github.com/mcidclan/gu-printf)  
   Using `pspDebugScreenPrintf` with PSPGU.
