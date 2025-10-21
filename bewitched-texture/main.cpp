@@ -23,13 +23,13 @@ void guConfig(const int id) {
       sceGuDisable(GU_STENCIL_TEST);
       sceGuDisable(GU_DEPTH_TEST);
 
-      sceGuDisable(GU_BLEND);
+      sceGuEnable(GU_BLEND);
       sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
 
       sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGBA);
       sceGuTexMode(GU_PSM_8888, 0, 1, 0);
       sceGuTexWrap(GU_CLAMP, GU_CLAMP);
-      sceGuDisable(GU_TEXTURE_2D);
+      sceGuEnable(GU_TEXTURE_2D);
       
       sceGuFinish();
       sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
@@ -40,15 +40,8 @@ void guConfig(const int id) {
     
     case 1: {
       sceGuStart(GU_DIRECT, list);
-  
       sceGuDrawBuffer(GU_PSM_8888, (void*)DRAW_BUF_0, BUF_WIDTH);
-      sceGuDisable(GU_SCISSOR_TEST);
       sceGuClearColor(0xFF5a4c35);
-      sceGuEnable(GU_TEXTURE_2D);
-      sceGuEnable(GU_BLEND);
-      
-      sceGuTexMode(GU_PSM_8888, 0, 1, 0);
-
       sceGuFinish();
       sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
       break;
@@ -60,38 +53,26 @@ void guConfig(const int id) {
  * Bewitched blending between texture 0 and texture 1.
  * The alpha of the output texture is blending.
  */
-const u32 BTEX_BYTE_COUNT = 64*64*4;
+const u32 BEWITCHED_BYTE_COUNT = 64*64*4;
 
-Vertex __attribute__((aligned(4))) bSprites[6] = {
-  // 565 shift right
-  { 0,  0,  0xffffffff, 1,  0,  0 },
-  { 31, 32, 0xffffffff, 32, 32, 0 },
-  // 565 shift left
-  { 1,  0,  0xffffffff, 0, 0,  0 },
-  { 32, 32, 0xffffffff, 31, 32, 0 },
-  // 8888 sprite
+Vertex __attribute__((aligned(4))) bSprite[2] = {
   { 0,  0,  0xffffffff, 0,  0,  0 },
   { 16, 16, 0xffffffff, 16, 16, 0 }
 };
 
-#define rightShift565   &(bSprites[0])
-#define leftShift565    &(bSprites[2])
-#define bSprite         &(bSprites[4])
-
 u32* produceBewitchedBlending(
-  const u32* const tex0, const u32* const tex1,
-  const u32 width, const u32 height,
-  const u32 alphaIntensity, const int alphaConstant) {
+    const u32* const tex0, const u32* const tex1,
+    const u32 width, const u32 height, const u32 intensity, u32* const bw
+  ) {
   
+  const u32 fbw = *bw = (width + 63) & ~63;
   const u32 width565 = width * 2;
-  const u32 fbw = (width + 63) & ~63;
   const u32 fbw565 = fbw * 2;
   
   const u32 buffer[4] = {
-    MIXTURE_BASE,
-    MIXTURE_BASE + BTEX_BYTE_COUNT,
-    MIXTURE_BASE + BTEX_BYTE_COUNT * 2,
-    MIXTURE_BASE + BTEX_BYTE_COUNT * 3,
+    0x04000000 | (MIXTURE_BASE),
+    0x04000000 | (MIXTURE_BASE + BEWITCHED_BYTE_COUNT),
+    0x04000000 | (MIXTURE_BASE + BEWITCHED_BYTE_COUNT * 2),
   };
   
   PspGeContext context __attribute__((aligned(16)));
@@ -99,82 +80,53 @@ u32* produceBewitchedBlending(
   
   sceGuStart(GU_DIRECT, list);
   
+  // shift alpha components to green channel
+  sceGuCopyImage(GU_PSM_5650,
+    1, 0, width565 - 1, height, width565, (void*)tex0,
+    0, 0, fbw565, (void*)buffer[0]
+  );
+  sceGuCopyImage(GU_PSM_5650,
+    1, 0, width565 - 1, height, width565, (void*)tex1,
+    0, 0, fbw565, (void*)buffer[1]
+  );
+
+  // enable common states
   sceGuClearColor(0);
+  sceGuEnable(GU_BLEND);
   sceGuEnable(GU_SCISSOR_TEST);
   sceGuEnable(GU_TEXTURE_2D);
+  sceGuScissor(0, 0, width, height);
+  sceGuTexMode(GU_PSM_8888, 0, 1, 0);
+  
+  // forcing alpha before blending the green component as our produced real alpha
+  // then blend alpha components of texture 0 and texture 1 through green channel  
+  const u32 fix = (intensity << 8);
+  sceGuBlendFunc(GU_ADD, GU_FIX, GU_FIX, fix, fix);
 
-  // force alpha value if alphaConstant param >= 0
-  if (alphaConstant < 0) {
+  sceGuDrawBuffer(GU_PSM_8888, (void*)(buffer[2]), fbw);
+  sceGuClear(GU_COLOR_BUFFER_BIT);
 
-    // shift alpha components to green channel
-    sceGuTexMode(GU_PSM_5650, 0, 1, 0);
-    sceGuScissor(0, 0, width565, height);
+  sceGuTexImage(0, width, height, fbw, (void*)buffer[0]);
+  sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
+  GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, bSprite);
 
-    // shifting over texture 0
-    sceGuDrawBuffer(GU_PSM_5650, (void*)(buffer[0]), fbw565);
-    sceGuTexImage(0, width565, height, width565, tex0);
-    sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
-    GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, leftShift565);
+  sceGuTexImage(0, width, height, fbw, (void*)buffer[1]);
+  sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
+  GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, bSprite);
+  
+  sceGuTexSync();
 
-    // shifting over texture 1
-    sceGuDrawBuffer(GU_PSM_5650, (void*)(buffer[1]), fbw565);
-    sceGuTexImage(0, width565, height, width565, tex1);
-    sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
-    GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, leftShift565);
-    
-    sceGuTexSync();
-      
-    // forcing alpha before blending the green component as our produced real alpha
-    // then blend alpha components of texture 0 and texture 1 through green channel
-    sceGuTexMode(GU_PSM_8888, 0, 1, 0);
-    sceGuEnable(GU_BLEND);
-    const u32 fix = (alphaIntensity << 8);
-    sceGuBlendFunc(GU_ADD, GU_FIX, GU_FIX, fix, fix);
-
-    sceGuDrawBuffer(GU_PSM_8888, (void*)(buffer[2]), fbw);
-    sceGuScissor(0, 0, width, height);
-    sceGuClear(GU_COLOR_BUFFER_BIT);
-
-    sceGuTexImage(0, width, height, fbw, (void*)(0x04000000 | buffer[0]));
-    sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
-    GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, bSprite);
-
-    sceGuTexImage(0, width, height, fbw, (void*)(0x04000000 | buffer[1]));
-    sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
-    GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, bSprite);
-    
-    sceGuTexSync();
-
-
-    // shift back the final alpha component
-    sceGuTexMode(GU_PSM_5650, 0, 1, 0);
-    sceGuDisable(GU_BLEND);
-     
-    sceGuDrawBuffer(GU_PSM_5650, (void*)(buffer[0]), fbw565);
-    sceGuScissor(0, 0, width565, height);
-    sceGuClear(GU_COLOR_BUFFER_BIT);
-    
-    sceGuTexImage(0, width565, height, fbw565, (void*)(0x04000000 | buffer[2]));
-    sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
-    GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, rightShift565);
-
-    sceGuTexSync();
-  }
+  // shift back the final alpha component
+  sceGuCopyImage(GU_PSM_5650,
+    0, 0, width565 - 1, height, fbw565, (void*)buffer[2],
+    1, 0, fbw565, (void*)buffer[0]
+  );
 
   // blend RGB components of texture 0 and texture 1
-  sceGuTexMode(GU_PSM_8888, 0, 1, 0);
-  sceGuEnable(GU_BLEND);
   sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
 
-  sceGuDrawBuffer(GU_PSM_8888, (void*)(buffer[0]), fbw);
-  sceGuScissor(0, 0, width, height);
-  
-  if (alphaConstant >= 0) {
-    sceGuClearStencil(0xFF);
-    sceGuClear(GU_STENCIL_BUFFER_BIT | GU_COLOR_BUFFER_BIT);
-  } else {
-    sceGuClear(GU_COLOR_BUFFER_BIT);
-  }
+  sceGuDrawBuffer(GU_PSM_8888, (void*)buffer[0], fbw);
+  sceGuClear(GU_COLOR_BUFFER_BIT);
   
   sceGuTexImage(0, width, height, width, tex0);
   sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
@@ -191,7 +143,7 @@ u32* produceBewitchedBlending(
   
   sceGeRestoreContext(&context);
   
-  return (u32*)(0x44000000 | buffer[0]);
+  return (u32*)(0x40000000 | buffer[0]);
 }
 
 #define SPRITE_SIZE 128
@@ -227,13 +179,15 @@ int main() {
   pspDebugScreenEnableBackColor(0);
   pspDebugScreenSetOffset(buff);
   
-  u32* const bTex0 = (u32*)memalign(16, BTEX_BYTE_COUNT);
-  u32* const bTex = produceBewitchedBlending(tex0, tex1, w0, h0, 128, -1);
+  u32 bw0;
+  u32* const bTex0 = (u32*)memalign(16, BEWITCHED_BYTE_COUNT);
+  u32* const bTex = produceBewitchedBlending(tex0, tex1, w0, h0, 255, &bw0);
   
-  memcpy(bTex0, bTex, BTEX_BYTE_COUNT);
-  sceKernelDcacheWritebackInvalidateRange(bTex0, (BTEX_BYTE_COUNT + 63) & ~63);
-   
-  u32* const bTex1 = produceBewitchedBlending(tex1, tex0, w1, h1, 128, -1);
+  memcpy(bTex0, bTex, BEWITCHED_BYTE_COUNT);
+  sceKernelDcacheWritebackInvalidateRange(bTex0, (BEWITCHED_BYTE_COUNT + 63) & ~63);
+  
+  u32 bw1;
+  u32* const bTex1 = produceBewitchedBlending(tex1, tex0, w1, h1, 255, &bw1);
   
   guConfig(1);
 
@@ -245,11 +199,11 @@ int main() {
     
     sceGuClear(GU_COLOR_BUFFER_BIT | GU_DEPTH_BUFFER_BIT);
 
-    sceGuTexImage(0, h0, w0, 64, bTex0);
+    sceGuTexImage(0, h0, w0, bw0, bTex0);
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
     GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, sprite0);
     
-    sceGuTexImage(0, h1, w1, 64, bTex1);
+    sceGuTexImage(0, h1, w1, bw1, bTex1);
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
     GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, sprite1);
     
