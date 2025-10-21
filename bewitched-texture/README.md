@@ -1,9 +1,10 @@
 # PSP Bewitched Texture Blending
+This repo demonstrates **three different approaches** to bypassing PSPGU's alpha channel write limitations. All methods force alpha channel values to be set, however with limitations. Indeed, the alpha output for 565 and GU_POINTS methods will be that of the controlling texture, which we refer to here as the "bewitched texture". The Isolated Alpha method will require several texture processing passes and tricks. It is the recommended version that allows us to achieve true alpha blending.
 
-This repo demonstrates **three different approaches** to bypassing PSPGU's alpha channel write limitations. All methods force alpha channel values to be set, however with limitations. Indeed, the alpha output for 565 and GU_POINTS methods will be that of the controlling texture, which we refer to here as the "bewitched texture". And the Isolated alpha method will require several texture processing passes and tricks to achieve true alpha blending.
+## main.cpp
+This sample draws a `bewitched` texture by isolating the alpha components, blending them and then forcing the resulting value to be set in the final blended texture, while the RGB values are blended between both textures.
 
-**main.cpp**: This sample draws a `bewitched` texture by isolating the alpha components, blending them and then forcing the resulting value to be set in the final blended texture, while the RGB values are blended between both textures.
-
+## Other Samples as Informative Demonstrations
 **main_565.cpp**: This sample draws a `bewitched` texture using 5650 pixel format, forcing the alpha channel values to be set. This texture is then blended with an 8888 texture and output to the frame buffer. The resulting output texture will have its alpha values matching those of the `bewitched` texture, while the RGB values are blended between both textures.
 
 **main_gu_points.cpp**: This sample draws a `bewitched` texture using GU_POINTS through `Clear` mode, forcing the alpha channel values to be set. This texture is then blended with an 8888 standard texture and output to the frame buffer. The resulting output texture will have its alpha values matching those of the `bewitched` texture, while the RGB values are blended between both textures.
@@ -17,7 +18,10 @@ These demonstrations are **not presented as universal solutions**, but rather as
 ## Compilation
 
 ```bash
+# Recommended
 make clean; make;                                   # Compile with Isolated Alpha method (default)
+
+# Other methods
 make MODE=565 clean; make MODE=565;                 # Compile with RGB565 method
 make MODE=GU_POINTS clean; make MODE=GU_POINTS;     # Compile with GU_POINTS method
 ```

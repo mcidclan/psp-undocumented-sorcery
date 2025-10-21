@@ -51,29 +51,31 @@ void guConfig(const int id) {
 
 /*
  * Bewitched blending between texture 0 and texture 1.
- * The alpha of the output texture is blending.
+ * The alpha of the output texture is blended.
  */
-const u32 BEWITCHED_BYTE_COUNT = 64*64*4;
-
-Vertex __attribute__((aligned(4))) bSprite[2] = {
-  { 0,  0,  0xffffffff, 0,  0,  0 },
-  { 16, 16, 0xffffffff, 16, 16, 0 }
-};
+#define BEWITCHED_MIXTURE_BASE  0x178000
+#define BEWITCHED_BYTE_COUNT    0x4000 /*64*64*4*/
 
 u32* produceBewitchedBlending(
     const u32* const tex0, const u32* const tex1,
     const u32 width, const u32 height, const u32 intensity, u32* const bw
   ) {
-  
+
   const u32 fbw = *bw = (width + 63) & ~63;
   const u32 width565 = width * 2;
   const u32 fbw565 = fbw * 2;
   
   const u32 buffer[4] = {
-    0x04000000 | (MIXTURE_BASE),
-    0x04000000 | (MIXTURE_BASE + BEWITCHED_BYTE_COUNT),
-    0x04000000 | (MIXTURE_BASE + BEWITCHED_BYTE_COUNT * 2),
+    0x04000000 | (BEWITCHED_MIXTURE_BASE),
+    0x04000000 | (BEWITCHED_MIXTURE_BASE + BEWITCHED_BYTE_COUNT),
+    0x04000000 | (BEWITCHED_MIXTURE_BASE + BEWITCHED_BYTE_COUNT * 2),
   };
+
+  const Vertex __attribute__((aligned(4))) bSprite[2] = {
+    { 0,  0,  0xffffffff, 0,  0,  0 },
+    { 16, 16, 0xffffffff, 16, 16, 0 }
+  };
+  sceKernelDcacheWritebackRange(bSprite, (sizeof(Vertex) * 2 + 63) & ~63);
   
   PspGeContext context __attribute__((aligned(16)));
   sceGeSaveContext(&context);

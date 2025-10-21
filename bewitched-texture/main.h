@@ -33,6 +33,4 @@ struct PointVert {
 #define DRAW_BUF_0      0
 #define DRAW_BUF_1      0x88000
 #define DEPTH_BUF       0x110000
-#define MIXTURE_BASE    0x178000
 
-#define CMD_CLEAR       0xd3
