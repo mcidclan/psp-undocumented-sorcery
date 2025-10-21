@@ -17,7 +17,7 @@
 struct Vertex {
   u16 u, v;
   u32 color;
-  s16 x, y, z;
+  u16 x, y, z;
 } __attribute__((aligned(4), packed));
 
 #if MODE == GU_POINTS_MODE
