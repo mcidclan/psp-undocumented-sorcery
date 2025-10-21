@@ -57,6 +57,8 @@ void guConfig(const int id) {
  * Bewitched texture blend between texture 0 and texture 1.
  * The output texture preserves the alpha values of the bewitched texture.
  */
+#define BEWITCHED_MIXTURE_BASE  0x178000
+
 Vertex __attribute__((aligned(4))) bSprite[2] = {
   { 0, 0, 0, 0, 0, 0 },
   { 32, 32, 0, 32, 32, 0 }
@@ -65,7 +67,7 @@ Vertex __attribute__((aligned(4))) bSprite[2] = {
 u32* mixBewitchedTexture(const u32* const tex0, const u32* const tex1) {
   static u32 bBaseOffset = 0;
 
-  const u32 buffer = MIXTURE_BASE + bBaseOffset;
+  const u32 buffer = BEWITCHED_MIXTURE_BASE + bBaseOffset;
 
   PspGeContext context __attribute__((aligned(16)));
   sceGeSaveContext(&context);

@@ -42,3 +42,8 @@ $(PATHOBJS)%.o: $(PATHSRC)%.S
 
 $(PATHOBJS)%.o: $(PATHSRC)%.cpp
 	$(CXX) -o $@ -c $< $(CXXFLAGS)
+
+all: $(EXTRA_TARGETS)
+	@echo "Compiled in $(MODE) mode, main file: $(MAIN).cpp"
+	@echo "Available modes: MODE=GU_POINTS, MODE=565, MODE=<empty> (default)"
+

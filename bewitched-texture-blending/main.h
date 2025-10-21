@@ -25,6 +25,8 @@ struct PointVert {
   u32 color;
   u16 x, y, z;
 } __attribute__((aligned(4), packed));
+
+#define CMD_CLEAR       0xd3
 #endif
 
 #define SCR_WIDTH       480

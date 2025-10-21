@@ -90,6 +90,8 @@ u8* makeBewitchedTexture(const u32* const tex, const int w, const int h) {
  * Mixes the bewitched texture with a second one.
  * The output texture preserves the alpha values of the bewitched texture.
  */
+#define BEWITCHED_MIXTURE_BASE  0x178000
+
 Vertex __attribute__((aligned(4))) bSprite[2] = {
   { 0, 0, 0, 0, 0, 0 },
   { 16, 16, 0, 16, 16, 0 }
@@ -98,7 +100,7 @@ Vertex __attribute__((aligned(4))) bSprite[2] = {
 u32* mixBewitchedTexture(const u8* const bList, const u32* const tex) {
   static u32 bBaseOffset = 0;
 
-  const u32 buffer = MIXTURE_BASE + bBaseOffset;
+  const u32 buffer = BEWITCHED_MIXTURE_BASE + bBaseOffset;
   
   sceGuStart(GU_DIRECT, list);
   
