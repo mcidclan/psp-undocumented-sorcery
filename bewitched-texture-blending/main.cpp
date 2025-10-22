@@ -1,4 +1,5 @@
 // Betwitched texture blending, 'Isolated Alpha' method 
+// Copyright mcidclan
 
 #include "./main.h"
 #include <malloc.h>
@@ -53,34 +54,50 @@ void guConfig(const int id) {
  * Bewitched blending between texture 0 and texture 1.
  * The alpha of the output texture is blended.
  */
-#define BEWITCHED_MIXTURE_BASE  0x178000
-#define BEWITCHED_BYTE_COUNT    0x4000 /*64*64*4*/
+struct BewitchedBlend {
+  u16 width;
+  u16 height;
+  u32* texture0;
+  u32* texture1;
+  u16 intensity;
+  u16 bufferWidth;
+  u32 vramOffset;
+  u32 byteCount;
+  u32* buffer;
+  void* list;
+};
 
-u32* produceBewitchedBlending(
-    const u32* const tex0, const u32* const tex1,
-    const u32 width, const u32 height, const u32 intensity, u32* const bw
-  ) {
-
-  const u32 fbw = *bw = (width + 63) & ~63;
+void produceBewitchedBlending(BewitchedBlend* const blend) {
+  
+  const u16 width = blend->width;
+  const u16 height = blend->height;
+  const u32* const tex0 = blend->texture0;
+  const u32* const tex1 = blend->texture1;
+  
+  const u32 fbw = blend->bufferWidth = (width + 63) & ~63;
   const u32 width565 = width * 2;
   const u32 fbw565 = fbw * 2;
   
-  const u32 buffer[4] = {
-    0x04000000 | (BEWITCHED_MIXTURE_BASE),
-    0x04000000 | (BEWITCHED_MIXTURE_BASE + BEWITCHED_BYTE_COUNT),
-    0x04000000 | (BEWITCHED_MIXTURE_BASE + BEWITCHED_BYTE_COUNT * 2),
+  blend->byteCount = fbw * height * 4;
+  
+  const u32 buffer[3] = {
+    0x04000000 | (blend->vramOffset),
+    0x04000000 | (blend->vramOffset + blend->byteCount),
+    0x04000000 | (blend->vramOffset + blend->byteCount * 2),
   };
 
+  blend->buffer = (u32*)(0x40000000 | buffer[0]);
+  
   const Vertex __attribute__((aligned(4))) bSprite[2] = {
-    { 0,  0,  0xffffffff, 0,  0,  0 },
-    { 16, 16, 0xffffffff, 16, 16, 0 }
+    { 0,     0,      0xffffffff, 0,     0,      0 },
+    { width, height, 0xffffffff, width, height, 0 }
   };
   sceKernelDcacheWritebackRange(bSprite, (sizeof(Vertex) * 2 + 63) & ~63);
   
   PspGeContext context __attribute__((aligned(16)));
   sceGeSaveContext(&context);
   
-  sceGuStart(GU_DIRECT, list);
+  sceGuStart(GU_DIRECT, blend->list);
   
   // shift alpha components to green channel
   sceGuCopyImage(GU_PSM_5650,
@@ -102,7 +119,7 @@ u32* produceBewitchedBlending(
   
   // forcing alpha before blending the green component as our produced real alpha
   // then blend alpha components of texture 0 and texture 1 through green channel  
-  const u32 fix = (intensity << 8);
+  const u32 fix = (blend->intensity << 8);
   sceGuBlendFunc(GU_ADD, GU_FIX, GU_FIX, fix, fix);
 
   sceGuDrawBuffer(GU_PSM_8888, (void*)(buffer[2]), fbw);
@@ -144,9 +161,9 @@ u32* produceBewitchedBlending(
   sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
   
   sceGeRestoreContext(&context);
-  
-  return (u32*)(0x40000000 | buffer[0]);
 }
+
+#define BEWITCHED_MIXTURE_BASE  0x178000
 
 #define SPRITE_SIZE 128
 #define SPRITE_SPACE 16
@@ -162,6 +179,7 @@ Vertex __attribute__((aligned(4))) sprite[4] = {
 #define sprite1   &(sprite[2])
 
 int main() {
+  
   int w0, h0, w1, h1;
   u32* const tex0 = (u32*)stbi_load("./tex0.png", &w0, &h0, NULL, STBI_rgb_alpha);
   u32* const tex1 = (u32*)stbi_load("./tex1.png", &w1, &h1, NULL, STBI_rgb_alpha);
@@ -180,16 +198,21 @@ int main() {
   pspDebugScreenSetTextColor(0);
   pspDebugScreenEnableBackColor(0);
   pspDebugScreenSetOffset(buff);
+
+  BewitchedBlend blend0 = {
+    (u16)w0, (u16)h0, tex0, tex1, 255, 0, BEWITCHED_MIXTURE_BASE, 0, NULL, list,
+  };
+  produceBewitchedBlending(&blend0);
   
-  u32 bw0;
-  u32* const bTex0 = (u32*)memalign(16, BEWITCHED_BYTE_COUNT);
-  u32* const bTex = produceBewitchedBlending(tex0, tex1, w0, h0, 255, &bw0);
+  u32* const bTex0 = (u32*)memalign(16, blend0.byteCount);
+  memcpy(bTex0, blend0.buffer, blend0.byteCount);
+  sceKernelDcacheWritebackInvalidateRange(bTex0, (blend0.byteCount + 63) & ~63);
   
-  memcpy(bTex0, bTex, BEWITCHED_BYTE_COUNT);
-  sceKernelDcacheWritebackInvalidateRange(bTex0, (BEWITCHED_BYTE_COUNT + 63) & ~63);
-  
-  u32 bw1;
-  u32* const bTex1 = produceBewitchedBlending(tex1, tex0, w1, h1, 255, &bw1);
+  BewitchedBlend blend1 = {
+    (u16)w1, (u16)h1, tex1, tex0, 255, 0, BEWITCHED_MIXTURE_BASE, 0, NULL, list,
+  };
+  produceBewitchedBlending(&blend1);
+  u32* const bTex1 = blend1.buffer;
   
   guConfig(1);
 
@@ -201,11 +224,11 @@ int main() {
     
     sceGuClear(GU_COLOR_BUFFER_BIT | GU_DEPTH_BUFFER_BIT);
 
-    sceGuTexImage(0, h0, w0, bw0, bTex0);
+    sceGuTexImage(0, h0, w0, blend0.bufferWidth, bTex0);
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
     GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, sprite0);
     
-    sceGuTexImage(0, h1, w1, bw1, bTex1);
+    sceGuTexImage(0, h1, w1, blend1.bufferWidth, bTex1);
     sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_COLOR_8888 |
     GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, NULL, sprite1);
     
