@@ -5,6 +5,7 @@
 #include <pspgu.h>
 #include <pspgum.h>
 
+// useful in kernel mode
 static inline void unlockMemory() {
   const unsigned int start = 0xbc000000;
   const unsigned int end   = 0xbc00002c;
@@ -18,7 +19,7 @@ static inline void unlockMemory() {
 #define SCR_WIDTH   480
 #define SCR_HEIGHT  272
 
-PSP_MODULE_INFO("vsh-cube-overlay", 0x1007, 1, 1);
+PSP_MODULE_INFO("vsh-cube-overlay", /*0*/0x1007, 1, 1);
 PSP_NO_CREATE_MAIN_THREAD();
 PSP_HEAP_SIZE_KB(1024*4);
 
@@ -29,7 +30,7 @@ struct Vertex {
 
 
 constexpr u32 CUBE_VERT_COUNT = 36;
-
+/*
 struct Vertex __attribute__((aligned(4))) cube[CUBE_VERT_COUNT] = {
   { 0xFF808080,  1.0f, -1.0f,  1.0f },
   { 0xFF808080, -1.0f,  1.0f,  1.0f },
@@ -73,14 +74,69 @@ struct Vertex __attribute__((aligned(4))) cube[CUBE_VERT_COUNT] = {
   { 0xFF00D0D0,  1.0f,  1.0f,  1.0f },
   { 0xFF00D0D0,  1.0f,  1.0f, -1.0f },
 };
+*/
 
 char done = 0;
-SceUID blockId;
+SceUID listId;
+SceUID cubeId;
+/*
+void test() {
+ int intr = sceKernelCpuSuspendIntr();
+ sceKernelCpuResumeIntr(intr);
+}
+*/
 
-/* Todo: manage sleep /!\ */
 int thread(SceSize ags, void *agp) {
-  blockId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "list_block", PSP_SMEM_Low, 2048, NULL);
-  void* list = (void*)sceKernelGetBlockHeadAddr(blockId);
+  listId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "list_block", PSP_SMEM_Low, 2048+16, NULL);
+  void* list = (void*)(((unsigned int)sceKernelGetBlockHeadAddr(listId) + 15) & ~15);
+
+  const u32 cubeSize = CUBE_VERT_COUNT * sizeof(struct Vertex);
+  cubeId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "cube_block", PSP_SMEM_Low, cubeSize + 4, NULL);
+  struct Vertex* cube = (struct Vertex*)(((unsigned int)sceKernelGetBlockHeadAddr(cubeId) + 3) & ~3);
+
+  cube[0] = (struct Vertex){ 0xFF808080,  1.0f, -1.0f,  1.0f };
+  cube[1] = (struct Vertex){ 0xFF808080, -1.0f,  1.0f,  1.0f };
+  cube[2] = (struct Vertex){ 0xFF808080, -1.0f, -1.0f,  1.0f };
+  cube[3] = (struct Vertex){ 0xFF808080,  1.0f,  1.0f,  1.0f };
+  cube[4] = (struct Vertex){ 0xFF808080, -1.0f,  1.0f,  1.0f };
+  cube[5] = (struct Vertex){ 0xFF808080,  1.0f, -1.0f,  1.0f };
+  //
+  cube[6] = (struct Vertex){ 0xFFFFFFFF, -1.0f,  1.0f, -1.0f },
+  cube[7] = (struct Vertex){ 0xFFFFFFFF,  1.0f, -1.0f, -1.0f };
+  cube[8] = (struct Vertex){ 0xFFFFFFFF, -1.0f, -1.0f, -1.0f };
+  cube[9] = (struct Vertex){ 0xFFFFFFFF, -1.0f,  1.0f, -1.0f };
+  cube[10] = (struct Vertex){ 0xFFFFFFFF,  1.0f,  1.0f, -1.0f };
+  cube[11] = (struct Vertex){ 0xFFFFFFFF,  1.0f, -1.0f, -1.0f };
+  //
+  cube[12] = (struct Vertex){ 0xFFFF00FF, -1.0f, -1.0f, -1.0f };
+  cube[13] = (struct Vertex){ 0xFFFF00FF, -1.0f, -1.0f,  1.0f };
+  cube[14] = (struct Vertex){ 0xFFFF00FF, -1.0f,  1.0f, -1.0f };
+  cube[15] = (struct Vertex){ 0xFFFF00FF, -1.0f, -1.0f,  1.0f };
+  cube[16] = (struct Vertex){ 0xFFFF00FF, -1.0f,  1.0f,  1.0f };
+  cube[17] = (struct Vertex){ 0xFFFF00FF, -1.0f,  1.0f, -1.0f };
+  //
+  cube[18] = (struct Vertex){ 0xFFFFFF00,  1.0f, -1.0f, -1.0f };
+  cube[19] = (struct Vertex){ 0xFFFFFF00,  1.0f,  1.0f, -1.0f };
+  cube[20] = (struct Vertex){ 0xFFFFFF00,  1.0f, -1.0f,  1.0f };
+  cube[21] = (struct Vertex){ 0xFFFFFF00,  1.0f, -1.0f,  1.0f };
+  cube[22] = (struct Vertex){ 0xFFFFFF00,  1.0f,  1.0f, -1.0f };
+  cube[23] = (struct Vertex){ 0xFFFFFF00,  1.0f,  1.0f,  1.0f };
+  //
+  cube[24] = (struct Vertex){ 0xFF00FFFF,  1.0f, -1.0f,  1.0f };
+  cube[25] = (struct Vertex){ 0xFF00FFFF, -1.0f, -1.0f,  1.0f };
+  cube[26] = (struct Vertex){ 0xFF00FFFF,  1.0f, -1.0f, -1.0f };
+  cube[27] = (struct Vertex){ 0xFF00FFFF,  1.0f, -1.0f, -1.0f };
+  cube[28] = (struct Vertex){ 0xFF00FFFF, -1.0f, -1.0f,  1.0f };
+  cube[29] = (struct Vertex){ 0xFF00FFFF, -1.0f, -1.0f, -1.0f };
+  //
+  cube[30] = (struct Vertex){ 0xFF00D0D0, -1.0f,  1.0f,  1.0f };
+  cube[31] = (struct Vertex){ 0xFF00D0D0,  1.0f,  1.0f, -1.0f };
+  cube[32] = (struct Vertex){ 0xFF00D0D0, -1.0f,  1.0f, -1.0f };
+  cube[33] = (struct Vertex){ 0xFF00D0D0, -1.0f,  1.0f,  1.0f };
+  cube[34] = (struct Vertex){ 0xFF00D0D0,  1.0f,  1.0f,  1.0f };
+  cube[35] = (struct Vertex){ 0xFF00D0D0,  1.0f,  1.0f, -1.0f };
+
+  sceKernelDcacheWritebackRange(cube, (cubeSize + 63) & ~63);
   
   pspDebugScreenInitEx(0, PSP_DISPLAY_PIXEL_FORMAT_8888, 1);
   pspDebugScreenEnableBackColor(0);
@@ -157,15 +213,16 @@ int thread(SceSize ags, void *agp) {
   } while (!done);
     
   sceGuTerm();
-  sceKernelFreePartitionMemory(blockId);
+  sceKernelFreePartitionMemory(listId);
+  sceKernelFreePartitionMemory(cubeId);
   sceKernelExitDeleteThread(0);
   
   return 0;
 }
 
 int module_start(SceSize ags, void *agp) {
-  unlockMemory();
-  SceUID id = sceKernelCreateThread("thread", thread, 0x12, 0x10000, 0, NULL);
+  unlockMemory(); // if in kernel mode
+  SceUID id = sceKernelCreateThread("thread", thread, 0x12, 0x10000, /*PSP_THREAD_ATTR_USER*/ 0, NULL);
   if (id >= 0) {
     sceKernelStartThread(id, 0, NULL);
   }
