@@ -30,51 +30,6 @@ struct Vertex {
 
 
 constexpr u32 CUBE_VERT_COUNT = 36;
-/*
-struct Vertex __attribute__((aligned(4))) cube[CUBE_VERT_COUNT] = {
-  { 0xFF808080,  1.0f, -1.0f,  1.0f },
-  { 0xFF808080, -1.0f,  1.0f,  1.0f },
-  { 0xFF808080, -1.0f, -1.0f,  1.0f },
-  { 0xFF808080,  1.0f,  1.0f,  1.0f },
-  { 0xFF808080, -1.0f,  1.0f,  1.0f },
-  { 0xFF808080,  1.0f, -1.0f,  1.0f },
-  //
-  { 0xFFFFFFFF, -1.0f,  1.0f, -1.0f },
-  { 0xFFFFFFFF,  1.0f, -1.0f, -1.0f },
-  { 0xFFFFFFFF, -1.0f, -1.0f, -1.0f },
-  { 0xFFFFFFFF, -1.0f,  1.0f, -1.0f },
-  { 0xFFFFFFFF,  1.0f,  1.0f, -1.0f },
-  { 0xFFFFFFFF,  1.0f, -1.0f, -1.0f },
-  //
-  { 0xFFFF00FF, -1.0f, -1.0f, -1.0f },
-  { 0xFFFF00FF, -1.0f, -1.0f,  1.0f },
-  { 0xFFFF00FF, -1.0f,  1.0f, -1.0f },
-  { 0xFFFF00FF, -1.0f, -1.0f,  1.0f },
-  { 0xFFFF00FF, -1.0f,  1.0f,  1.0f },
-  { 0xFFFF00FF, -1.0f,  1.0f, -1.0f },
-  //
-  { 0xFFFFFF00,  1.0f, -1.0f, -1.0f },
-  { 0xFFFFFF00,  1.0f,  1.0f, -1.0f },
-  { 0xFFFFFF00,  1.0f, -1.0f,  1.0f },
-  { 0xFFFFFF00,  1.0f, -1.0f,  1.0f },
-  { 0xFFFFFF00,  1.0f,  1.0f, -1.0f },
-  { 0xFFFFFF00,  1.0f,  1.0f,  1.0f },
-  //
-  { 0xFF00FFFF,  1.0f, -1.0f,  1.0f },
-  { 0xFF00FFFF, -1.0f, -1.0f,  1.0f },
-  { 0xFF00FFFF,  1.0f, -1.0f, -1.0f },
-  { 0xFF00FFFF,  1.0f, -1.0f, -1.0f },
-  { 0xFF00FFFF, -1.0f, -1.0f,  1.0f },
-  { 0xFF00FFFF, -1.0f, -1.0f, -1.0f },
-  //
-  { 0xFF00D0D0, -1.0f,  1.0f,  1.0f },
-  { 0xFF00D0D0,  1.0f,  1.0f, -1.0f },
-  { 0xFF00D0D0, -1.0f,  1.0f, -1.0f },
-  { 0xFF00D0D0, -1.0f,  1.0f,  1.0f },
-  { 0xFF00D0D0,  1.0f,  1.0f,  1.0f },
-  { 0xFF00D0D0,  1.0f,  1.0f, -1.0f },
-};
-*/
 
 char done = 0;
 SceUID listId;
@@ -86,12 +41,12 @@ void test() {
 }
 */
 
-int thread(SceSize ags, void *agp) {
+int thread(SceSize ags, void *agp) {  
   listId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "list_block", PSP_SMEM_Low, 2048+16, NULL);
   void* list = (void*)(((unsigned int)sceKernelGetBlockHeadAddr(listId) + 15) & ~15);
 
   const u32 cubeSize = CUBE_VERT_COUNT * sizeof(struct Vertex);
-  cubeId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "cube_block", PSP_SMEM_Low, cubeSize + 4, NULL);
+  cubeId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "cube_block", PSP_SMEM_Low, cubeSize + 64, NULL);
   struct Vertex* cube = (struct Vertex*)(((unsigned int)sceKernelGetBlockHeadAddr(cubeId) + 3) & ~3);
 
   cube[0] = (struct Vertex){ 0xFF808080,  1.0f, -1.0f,  1.0f };
@@ -145,7 +100,8 @@ int thread(SceSize ags, void *agp) {
   int width, format;
 
   sceGuInit();
-
+  sceGuDisplay(GU_FALSE);
+ 
   do {
     sceDisplayGetFrameBuf(&frame, &width, &format, 0);
 
@@ -173,7 +129,6 @@ int thread(SceSize ags, void *agp) {
       sceGuScissor(0, 0, 480, 272);
       sceGuEnable(GU_SCISSOR_TEST);
       sceGuClear(GU_DEPTH_BUFFER_BIT);
-
       
       sceGumMatrixMode(GU_PROJECTION);
       sceGumLoadIdentity();
