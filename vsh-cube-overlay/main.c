@@ -29,14 +29,88 @@ struct Vertex {
 
 char done = 0;
 const u32 CUBE_VERT_COUNT = 36;
+void sctrlHENPatchSyscall(void *addr, void *newaddr);
+u32 sctrlHENFindFunction(char *modname, char *libname, u32 nid);
+
+void* hook(char* mod, char* lib, u32 nid, void* hf) {
+  unsigned int* const f = (unsigned int*)sctrlHENFindFunction(mod, lib, nid);
+  if (f) {
+    sctrlHENPatchSyscall(f, hf);
+    return f;
+  }
+  return NULL;
+}
+
+int (*_displaySetFrameBuf)(void*, int, int, int);
+
+void* list;
+struct Vertex* cube;
+PspGeContext context __attribute__((aligned(16))) = {0};
+
+int displaySetFrameBuf(void *frame, int bufferwidth, int pixelformat, int sync) {
+  int d = _displaySetFrameBuf(frame, bufferwidth, pixelformat, sync);
+
+  sceGeSaveContext(&context);
+
+  int intr = sceKernelCpuSuspendIntr();
+  sceGuStart(GU_DIRECT, list);
+
+  sceGuDepthBuffer((void*)0x1a8000, BUF_WIDTH);
+  sceGuDepthRange(65535, 0);
+  sceGuClearDepth(0.0f);
+  sceGuDepthFunc(GU_GEQUAL);
+  sceGuEnable(GU_DEPTH_TEST);
+
+  sceGuOffset(2048 - (SCR_WIDTH/2), 2048 - (SCR_HEIGHT/2));
+  sceGuViewport(2048, 2048, SCR_WIDTH, SCR_HEIGHT);
+  sceGuDisable(GU_CULL_FACE);
+
+  sceGuDrawBuffer(GU_PSM_8888, frame, BUF_WIDTH);
+
+  sceGuDisable(GU_BLEND);
+  sceGuScissor(0, 0, 480, 272);
+  sceGuEnable(GU_SCISSOR_TEST);
+  sceGuClear(GU_DEPTH_BUFFER_BIT);
+
+  sceGumMatrixMode(GU_PROJECTION);
+  sceGumLoadIdentity();
+  sceGumPerspective(50.0f, 16.0f/9.0f, 1.0f, 100.0f);
+
+  sceGumMatrixMode(GU_VIEW);
+  sceGumLoadIdentity();
+
+  sceGumMatrixMode(GU_MODEL);
+  sceGumLoadIdentity();
+
+  {
+    static float deg = 45.0f;
+    const float rad = 3.14f/180.0f;
+    const ScePspFVector3 t0 = {3.0f, -1.0f, -6.0f};
+    sceGumTranslate(&t0);
+    sceGumRotateY(rad * deg * 1.2f);
+    sceGumRotateZ(rad * deg * 1.4f);
+    deg += 0.25f;
+  }
+
+  sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 |
+  GU_VERTEX_32BITF | GU_TRANSFORM_3D, CUBE_VERT_COUNT, NULL, cube);
+
+  sceGuFinish();
+  sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
+
+  sceKernelCpuResumeIntr(intr);
+  sceGeRestoreContext(&context);
+
+  return d;
+}
 
 int thread(SceSize ags, void *agp) {  
-  SceUID listId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "list_block", PSP_SMEM_High, 2048+16, NULL);
-  void* list = (void*)(((unsigned int)sceKernelGetBlockHeadAddr(listId) + 15) & ~15);
+  SceUID listId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "list_block", PSP_SMEM_Low, 2048+16, NULL);
+  list = (void*)(((unsigned int)sceKernelGetBlockHeadAddr(listId) + 15) & ~15);
 
   const u32 cubeSize = CUBE_VERT_COUNT * sizeof(struct Vertex);
-  SceUID cubeId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "cube_block", PSP_SMEM_High, cubeSize + 64, NULL);
-  struct Vertex* cube = (struct Vertex*)(((unsigned int)sceKernelGetBlockHeadAddr(cubeId) + 3) & ~3);
+  SceUID cubeId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "cube_block", PSP_SMEM_Low, cubeSize + 64, NULL);
+  cube = (struct Vertex*)(((unsigned int)sceKernelGetBlockHeadAddr(cubeId) + 3) & ~3);
   
   cube[0] = (struct Vertex){ 0xFF808080,  1.0f, -1.0f,  1.0f };
   cube[1] = (struct Vertex){ 0xFF808080, -1.0f,  1.0f,  1.0f };
@@ -82,78 +156,29 @@ int thread(SceSize ags, void *agp) {
 
   sceKernelDcacheWritebackRange(cube, (cubeSize + 63) & ~63);
 
-  pspDebugScreenInitEx(0, PSP_DISPLAY_PIXEL_FORMAT_8888, 1);
-  pspDebugScreenEnableBackColor(0);
+  // pspDebugScreenInitEx(0, PSP_DISPLAY_PIXEL_FORMAT_8888, 1);
+  // pspDebugScreenEnableBackColor(0);
 
   sceGuInit();
   sceGuDisplay(GU_FALSE);
-
-  void *frame = NULL;
-  int width, format; 
-  float deg = 45.0f;
+  
+  _displaySetFrameBuf = hook("sceDisplay_Service", "sceDisplay", 0x289D82FE, (void*)displaySetFrameBuf);
+  
+  // void *frame = NULL;
+  // int width, format; 
+  
   do {
+    /*
     sceDisplayGetFrameBuf(&frame, &width, &format, 0);
-
     if (frame) {
-      pspDebugScreenSetBase((u32*)(0x40000000 | (u32)frame));
-
-      // PspGeContext context __attribute__((aligned(16))) = {0};
-      // sceGeSaveContext(&context);
-      
-      sceGuStart(GU_DIRECT, list);
-      
-      sceGuDepthBuffer((void*)0x1a8000, BUF_WIDTH);
-      sceGuDepthRange(65535, 0);
-      sceGuClearDepth(0.0f);
-      sceGuDepthFunc(GU_GEQUAL);
-      sceGuEnable(GU_DEPTH_TEST);
-
-      sceGuOffset(2048 - (SCR_WIDTH/2), 2048 - (SCR_HEIGHT/2));
-      sceGuViewport(2048, 2048, SCR_WIDTH, SCR_HEIGHT);
-      sceGuDisable(GU_CULL_FACE);
-
-      sceGuDrawBuffer(GU_PSM_8888, frame, BUF_WIDTH);
-
-      sceGuDisable(GU_BLEND);
-      sceGuScissor(0, 0, 480, 272);
-      sceGuEnable(GU_SCISSOR_TEST);
-      sceGuClear(GU_DEPTH_BUFFER_BIT);
-      
-      sceGumMatrixMode(GU_PROJECTION);
-      sceGumLoadIdentity();
-      sceGumPerspective(50.0f, 16.0f/9.0f, 1.0f, 100.0f);
-
-      sceGumMatrixMode(GU_VIEW);
-      sceGumLoadIdentity();
-
-      sceGumMatrixMode(GU_MODEL);
-      sceGumLoadIdentity();
-      
-      {
-        const float rad = 3.14f/180.0f;
-        const ScePspFVector3 t0 = {3.0f, -1.0f, -6.0f};
-        sceGumTranslate(&t0);
-        sceGumRotateY(rad * deg * 1.2f);
-        sceGumRotateZ(rad * deg * 1.4f);
-        deg += 0.25f;
-      }
-      
-      sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 |
-        GU_VERTEX_32BITF | GU_TRANSFORM_3D, CUBE_VERT_COUNT, NULL, cube);
-      
-      sceGuFinish();
-      sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
-      
-      // sceGeRestoreContext(&context);
-
       pspDebugScreenSetXY(1, 31);
       pspDebugScreenKprintf("GU cube on VSH");
     }
-    
     sceDisplayWaitVblank();
-    sceKernelDelayThread(1);
+    */
+    sceKernelDelayThread(100);
   } while (!done);
-    
+
   sceGuTerm();
   sceKernelFreePartitionMemory(listId);
   sceKernelFreePartitionMemory(cubeId);

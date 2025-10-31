@@ -16,7 +16,7 @@ ASFLAGS = $(CFLAGS)
 LDFLAGS += -nostartfiles
 CFLAGS += -I$(PSPSDK)/../include
 
-LIBS = -lpsppower -lpspgum -lpspgu -lpspge -lm
+LIBS = -lpsppower -lpspgum -lpspgu -lpspge -lm -lpspsystemctrl_kernel
  
 PSPSDK=$(shell psp-config --pspsdk-path)
 include $(PSPSDK)/lib/build_prx.mak
