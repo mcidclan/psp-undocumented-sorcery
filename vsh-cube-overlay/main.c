@@ -20,7 +20,7 @@ static inline void unlockMemory() {
 
 PSP_MODULE_INFO("vsh-cube-overlay", 0x1007, 1, 1);
 PSP_NO_CREATE_MAIN_THREAD();
-PSP_HEAP_SIZE_KB(1024*4);
+PSP_HEAP_SIZE_KB(2048);
 
 struct Vertex {
   u32 color;
@@ -31,11 +31,11 @@ char done = 0;
 const u32 CUBE_VERT_COUNT = 36;
 
 int thread(SceSize ags, void *agp) {  
-  SceUID listId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "list_block", PSP_SMEM_Low, 2048+16, NULL);
+  SceUID listId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "list_block", PSP_SMEM_High, 2048+16, NULL);
   void* list = (void*)(((unsigned int)sceKernelGetBlockHeadAddr(listId) + 15) & ~15);
 
   const u32 cubeSize = CUBE_VERT_COUNT * sizeof(struct Vertex);
-  SceUID cubeId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "cube_block", PSP_SMEM_Low, cubeSize + 64, NULL);
+  SceUID cubeId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "cube_block", PSP_SMEM_High, cubeSize + 64, NULL);
   struct Vertex* cube = (struct Vertex*)(((unsigned int)sceKernelGetBlockHeadAddr(cubeId) + 3) & ~3);
   
   cube[0] = (struct Vertex){ 0xFF808080,  1.0f, -1.0f,  1.0f };
@@ -91,19 +91,18 @@ int thread(SceSize ags, void *agp) {
   void *frame = NULL;
   int width, format; 
   float deg = 45.0f;
-
   do {
     sceDisplayGetFrameBuf(&frame, &width, &format, 0);
 
     if (frame) {
       pspDebugScreenSetBase((u32*)(0x40000000 | (u32)frame));
-      
-      PspGeContext context __attribute__((aligned(16)));
-      sceGeSaveContext(&context);
 
+      // PspGeContext context __attribute__((aligned(16))) = {0};
+      // sceGeSaveContext(&context);
+      
       sceGuStart(GU_DIRECT, list);
       
-      sceGuDepthBuffer((void*)0x178000, BUF_WIDTH);
+      sceGuDepthBuffer((void*)0x1a8000, BUF_WIDTH);
       sceGuDepthRange(65535, 0);
       sceGuClearDepth(0.0f);
       sceGuDepthFunc(GU_GEQUAL);
@@ -145,14 +144,14 @@ int thread(SceSize ags, void *agp) {
       sceGuFinish();
       sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
       
-      sceGeRestoreContext(&context);
-      
+      // sceGeRestoreContext(&context);
+
       pspDebugScreenSetXY(1, 31);
       pspDebugScreenKprintf("GU cube on VSH");
     }
     
     sceDisplayWaitVblank();
-    sceKernelDelayThread(10);
+    sceKernelDelayThread(1);
   } while (!done);
     
   sceGuTerm();
