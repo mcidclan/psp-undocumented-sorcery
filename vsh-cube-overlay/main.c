@@ -45,12 +45,15 @@ int (*_displaySetFrameBuf)(void*, int, int, int);
 
 void* list;
 struct Vertex* cube;
-PspGeContext context __attribute__((aligned(16))) = {0};
+PspGeContext* ctx;
 
 int displaySetFrameBuf(void *frame, int bufferwidth, int pixelformat, int sync) {
-  int d = _displaySetFrameBuf(frame, bufferwidth, pixelformat, sync);
+  
+  pspDebugScreenSetBase((u32*)(0x40000000 | (u32)frame));
+  pspDebugScreenSetXY(41, 4);
+  pspDebugScreenKprintf("GU cube on VSH");
 
-  sceGeSaveContext(&context);
+  sceGeSaveContext(ctx);
 
   int intr = sceKernelCpuSuspendIntr();
   sceGuStart(GU_DIRECT, list);
@@ -67,7 +70,11 @@ int displaySetFrameBuf(void *frame, int bufferwidth, int pixelformat, int sync) 
 
   sceGuDrawBuffer(GU_PSM_8888, frame, BUF_WIDTH);
 
-  sceGuDisable(GU_BLEND);
+  sceGuBlendFunc(GU_ADD, GU_DST_COLOR, GU_FIX, 0, 0x606060);
+  sceGuEnable(GU_BLEND);
+  
+  sceGuDisable(GU_CULL_FACE);
+  
   sceGuScissor(0, 0, 480, 272);
   sceGuEnable(GU_SCISSOR_TEST);
   sceGuClear(GU_DEPTH_BUFFER_BIT);
@@ -85,7 +92,7 @@ int displaySetFrameBuf(void *frame, int bufferwidth, int pixelformat, int sync) 
   {
     static float deg = 45.0f;
     const float rad = 3.14f/180.0f;
-    const ScePspFVector3 t0 = {3.0f, -1.0f, -6.0f};
+    const ScePspFVector3 t0 = {7.8f, 3.0f, -12.0f};
     sceGumTranslate(&t0);
     sceGumRotateY(rad * deg * 1.2f);
     sceGumRotateZ(rad * deg * 1.4f);
@@ -97,34 +104,37 @@ int displaySetFrameBuf(void *frame, int bufferwidth, int pixelformat, int sync) 
 
   sceGuFinish();
   sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
-
+  
   sceKernelCpuResumeIntr(intr);
-  sceGeRestoreContext(&context);
-
-  return d;
+  sceGeRestoreContext(ctx);
+  
+  return _displaySetFrameBuf(frame, bufferwidth, pixelformat, sync);
 }
 
 int thread(SceSize ags, void *agp) {  
   SceUID listId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "list_block", PSP_SMEM_Low, 2048+16, NULL);
   list = (void*)(((unsigned int)sceKernelGetBlockHeadAddr(listId) + 15) & ~15);
 
+  SceUID ctxId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_KERNEL, "ctx_block", PSP_SMEM_Low, sizeof(PspGeContext)+16, NULL);
+  ctx = (void*)(((unsigned int)sceKernelGetBlockHeadAddr(ctxId) + 15) & ~15);
+
   const u32 cubeSize = CUBE_VERT_COUNT * sizeof(struct Vertex);
   SceUID cubeId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "cube_block", PSP_SMEM_Low, cubeSize + 64, NULL);
   cube = (struct Vertex*)(((unsigned int)sceKernelGetBlockHeadAddr(cubeId) + 3) & ~3);
   
-  cube[0] = (struct Vertex){ 0xFF808080,  1.0f, -1.0f,  1.0f };
-  cube[1] = (struct Vertex){ 0xFF808080, -1.0f,  1.0f,  1.0f };
-  cube[2] = (struct Vertex){ 0xFF808080, -1.0f, -1.0f,  1.0f };
-  cube[3] = (struct Vertex){ 0xFF808080,  1.0f,  1.0f,  1.0f };
-  cube[4] = (struct Vertex){ 0xFF808080, -1.0f,  1.0f,  1.0f };
-  cube[5] = (struct Vertex){ 0xFF808080,  1.0f, -1.0f,  1.0f };
+  cube[0]  = (struct Vertex){ 0xFF808080,  1.0f, -1.0f,  1.0f };
+  cube[1]  = (struct Vertex){ 0xFF808080, -1.0f,  1.0f,  1.0f };
+  cube[2]  = (struct Vertex){ 0xFF808080, -1.0f, -1.0f,  1.0f };
+  cube[3]  = (struct Vertex){ 0xFF808080,  1.0f,  1.0f,  1.0f };
+  cube[4]  = (struct Vertex){ 0xFF808080, -1.0f,  1.0f,  1.0f };
+  cube[5]  = (struct Vertex){ 0xFF808080,  1.0f, -1.0f,  1.0f };
   //
-  cube[6] = (struct Vertex){ 0xFFFFFFFF, -1.0f,  1.0f, -1.0f },
-  cube[7] = (struct Vertex){ 0xFFFFFFFF,  1.0f, -1.0f, -1.0f };
-  cube[8] = (struct Vertex){ 0xFFFFFFFF, -1.0f, -1.0f, -1.0f };
-  cube[9] = (struct Vertex){ 0xFFFFFFFF, -1.0f,  1.0f, -1.0f };
-  cube[10] = (struct Vertex){ 0xFFFFFFFF,  1.0f,  1.0f, -1.0f };
-  cube[11] = (struct Vertex){ 0xFFFFFFFF,  1.0f, -1.0f, -1.0f };
+  cube[6]  = (struct Vertex){ 0xFFF0FFD0, -1.0f,  1.0f, -1.0f },
+  cube[7]  = (struct Vertex){ 0xFFF0FFD0,  1.0f, -1.0f, -1.0f };
+  cube[8]  = (struct Vertex){ 0xFFF0FFD0, -1.0f, -1.0f, -1.0f };
+  cube[9]  = (struct Vertex){ 0xFFF0FFD0, -1.0f,  1.0f, -1.0f };
+  cube[10] = (struct Vertex){ 0xFFF0FFD0,  1.0f,  1.0f, -1.0f };
+  cube[11] = (struct Vertex){ 0xFFF0FFD0,  1.0f, -1.0f, -1.0f };
   //
   cube[12] = (struct Vertex){ 0xFFFF00FF, -1.0f, -1.0f, -1.0f };
   cube[13] = (struct Vertex){ 0xFFFF00FF, -1.0f, -1.0f,  1.0f };
@@ -156,31 +166,21 @@ int thread(SceSize ags, void *agp) {
 
   sceKernelDcacheWritebackRange(cube, (cubeSize + 63) & ~63);
 
-  // pspDebugScreenInitEx(0, PSP_DISPLAY_PIXEL_FORMAT_8888, 1);
-  // pspDebugScreenEnableBackColor(0);
+  pspDebugScreenInitEx(0, PSP_DISPLAY_PIXEL_FORMAT_8888, 1);
+  pspDebugScreenEnableBackColor(0);
 
   sceGuInit();
   sceGuDisplay(GU_FALSE);
   
   _displaySetFrameBuf = hook("sceDisplay_Service", "sceDisplay", 0x289D82FE, (void*)displaySetFrameBuf);
   
-  // void *frame = NULL;
-  // int width, format; 
-  
   do {
-    /*
-    sceDisplayGetFrameBuf(&frame, &width, &format, 0);
-    if (frame) {
-      pspDebugScreenSetXY(1, 31);
-      pspDebugScreenKprintf("GU cube on VSH");
-    }
-    sceDisplayWaitVblank();
-    */
-    sceKernelDelayThread(100);
+    sceKernelDelayThread(10000);
   } while (!done);
 
   sceGuTerm();
   sceKernelFreePartitionMemory(listId);
+  sceKernelFreePartitionMemory(ctxId);
   sceKernelFreePartitionMemory(cubeId);
   sceKernelExitDeleteThread(0);
   
