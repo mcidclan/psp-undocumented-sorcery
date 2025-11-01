@@ -70,9 +70,10 @@ int displaySetFrameBuf(void *frame, int bufferwidth, int pixelformat, int sync) 
 
   sceGuDrawBuffer(GU_PSM_8888, frame, BUF_WIDTH);
 
-  sceGuBlendFunc(GU_ADD, GU_DST_COLOR, GU_FIX, 0, 0x606060);
-  sceGuEnable(GU_BLEND);
+  // sceGuBlendFunc(GU_ADD, GU_DST_COLOR, GU_FIX, 0, 0x606060);
+  // sceGuEnable(GU_BLEND);
   
+  sceGuDisable(GU_BLEND);
   sceGuDisable(GU_CULL_FACE);
   
   sceGuScissor(0, 0, 480, 272);
