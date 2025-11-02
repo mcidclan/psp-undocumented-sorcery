@@ -14,25 +14,10 @@ static inline void unlockMemory() {
   asm volatile("sync");
 }
 
-#define BUF_WIDTH   512
-#define SCR_WIDTH   480
-#define SCR_HEIGHT  272
-
-PSP_MODULE_INFO("vsh-cube-overlay", 0x1007, 1, 1);
-PSP_NO_CREATE_MAIN_THREAD();
-PSP_HEAP_SIZE_KB(2048);
-
-struct Vertex {
-  u32 color;
-  float x, y, z;
-} __attribute__((aligned(4), packed));
-
-char done = 0;
-const u32 CUBE_VERT_COUNT = 36;
 void sctrlHENPatchSyscall(void *addr, void *newaddr);
-u32 sctrlHENFindFunction(char *modname, char *libname, u32 nid);
+unsigned int sctrlHENFindFunction(char *modname, char *libname, unsigned int nid);
 
-void* hook(char* mod, char* lib, u32 nid, void* hf) {
+static inline void* hook(char* mod, char* lib, unsigned int nid, void* hf) {
   unsigned int* const f = (unsigned int*)sctrlHENFindFunction(mod, lib, nid);
   if (f) {
     sctrlHENPatchSyscall(f, hf);
@@ -41,24 +26,58 @@ void* hook(char* mod, char* lib, u32 nid, void* hf) {
   return NULL;
 }
 
-int (*_displaySetFrameBuf)(void*, int, int, int);
+struct Vertex {
+  unsigned int color;
+  float x, y, z;
+} __attribute__((aligned(4), packed));
+
+PSP_MODULE_INFO("vsh-cube-overlay", 0x1007, 1, 1);
+PSP_NO_CREATE_MAIN_THREAD();
+PSP_HEAP_SIZE_KB(2048);
+
+#define VRAM_BACKUP_BYTE_COUNT  0x44000
+#define DEPTH_BUFFER            0x44000
+#define DEPTH_BUFFER_SLIM_PLUS  0x200000
+#define CUBE_VERT_COUNT         36
+#define BUF_WIDTH               512
+#define SCR_WIDTH               480
+#define SCR_HEIGHT              272
 
 void* list;
+void* vramBackup;
 struct Vertex* cube;
 PspGeContext* ctx;
+unsigned char done = 0;
+unsigned int edramSize = 0;
+  
+int (*_displaySetFrameBuf)(void*, int, int, int);
 
 int displaySetFrameBuf(void *frame, int bufferwidth, int pixelformat, int sync) {
+
+  if (edramSize < 0x400000) {
+    scePowerSetClockFrequency(333, 333, 166);
+  }
   
+  int  ret =  _displaySetFrameBuf(frame, bufferwidth, pixelformat, sync);
+
   pspDebugScreenSetBase((u32*)(0x40000000 | (u32)frame));
   pspDebugScreenSetXY(41, 4);
   pspDebugScreenKprintf("GU cube on VSH");
 
   sceGeSaveContext(ctx);
-
+  
   int intr = sceKernelCpuSuspendIntr();
-  sceGuStart(GU_DIRECT, list);
+  sceGuStart(GU_DIRECT, (void*)list);
 
-  sceGuDepthBuffer((void*)0x1a8000, BUF_WIDTH);
+  if (edramSize < 0x400000) {
+    sceGuCopyImage(GU_PSM_8888, 0, 0, 480, 136, 512,
+    (void*)(0x04000000 | DEPTH_BUFFER), 0, 0, 512, (void*)vramBackup);
+    sceGuDepthBuffer((void*)DEPTH_BUFFER, BUF_WIDTH);
+  }
+  else {
+    sceGuDepthBuffer((void*)DEPTH_BUFFER_SLIM_PLUS, BUF_WIDTH);
+  }
+  
   sceGuDepthRange(65535, 0);
   sceGuClearDepth(0.0f);
   sceGuDepthFunc(GU_GEQUAL);
@@ -69,7 +88,9 @@ int displaySetFrameBuf(void *frame, int bufferwidth, int pixelformat, int sync) 
   sceGuDisable(GU_CULL_FACE);
 
   sceGuDrawBuffer(GU_PSM_8888, frame, BUF_WIDTH);
-
+  sceGuScissor(0, 0, 480, 136);
+  sceGuEnable(GU_SCISSOR_TEST);
+      
   // sceGuBlendFunc(GU_ADD, GU_DST_COLOR, GU_FIX, 0, 0x606060);
   // sceGuEnable(GU_BLEND);
   
@@ -102,6 +123,11 @@ int displaySetFrameBuf(void *frame, int bufferwidth, int pixelformat, int sync) 
 
   sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 |
   GU_VERTEX_32BITF | GU_TRANSFORM_3D, CUBE_VERT_COUNT, NULL, cube);
+  
+  if (edramSize < 0x400000) {
+    sceGuCopyImage(GU_PSM_8888, 0, 0, 480, 136, 512,
+    (void*)vramBackup, 0, 0, 512, (void*)(0x04000000 | DEPTH_BUFFER));
+  }
 
   sceGuFinish();
   sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
@@ -109,18 +135,27 @@ int displaySetFrameBuf(void *frame, int bufferwidth, int pixelformat, int sync) 
   sceKernelCpuResumeIntr(intr);
   sceGeRestoreContext(ctx);
   
-  return _displaySetFrameBuf(frame, bufferwidth, pixelformat, sync);
+  return ret;
 }
 
-int thread(SceSize ags, void *agp) {  
-  SceUID listId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "list_block", PSP_SMEM_Low, 2048+16, NULL);
+int thread(SceSize ags, void *agp) {
+  
+  SceUID vramId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER,
+  "vram_block", PSP_SMEM_Low, VRAM_BACKUP_BYTE_COUNT+16, NULL);
+  vramBackup = (void*)(((unsigned int)sceKernelGetBlockHeadAddr(vramId) + 15) & ~15);
+
+  SceUID listId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER,
+  "list_block", PSP_SMEM_Low, 2048+16, NULL);
   list = (void*)(((unsigned int)sceKernelGetBlockHeadAddr(listId) + 15) & ~15);
 
-  SceUID ctxId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_KERNEL, "ctx_block", PSP_SMEM_Low, sizeof(PspGeContext)+16, NULL);
+  SceUID ctxId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_KERNEL,
+  "ctx_block", PSP_SMEM_Low, sizeof(PspGeContext)+16, NULL);
   ctx = (void*)(((unsigned int)sceKernelGetBlockHeadAddr(ctxId) + 15) & ~15);
 
-  const u32 cubeSize = CUBE_VERT_COUNT * sizeof(struct Vertex);
-  SceUID cubeId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER, "cube_block", PSP_SMEM_Low, cubeSize + 64, NULL);
+  const unsigned int cubeSize = CUBE_VERT_COUNT * sizeof(struct Vertex);
+  SceUID cubeId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER,
+  "cube_block", PSP_SMEM_Low, cubeSize + 64, NULL);
+  
   cube = (struct Vertex*)(((unsigned int)sceKernelGetBlockHeadAddr(cubeId) + 3) & ~3);
   
   cube[0]  = (struct Vertex){ 0xFF808080,  1.0f, -1.0f,  1.0f };
@@ -180,6 +215,7 @@ int thread(SceSize ags, void *agp) {
   } while (!done);
 
   sceGuTerm();
+  sceKernelFreePartitionMemory(vramId);
   sceKernelFreePartitionMemory(listId);
   sceKernelFreePartitionMemory(ctxId);
   sceKernelFreePartitionMemory(cubeId);
@@ -190,6 +226,8 @@ int thread(SceSize ags, void *agp) {
 
 int module_start(SceSize ags, void *agp) {
   unlockMemory();
+  sceGeEdramSetSize(0x400000);
+  edramSize = sceGeEdramGetSize();
   SceUID id = sceKernelCreateThread("thread", thread, 0x20, 0x10000, 0, NULL);
   if (id >= 0) {
     sceKernelStartThread(id, 0, NULL);
