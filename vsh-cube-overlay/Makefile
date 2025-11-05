@@ -13,12 +13,14 @@ OBJS := $(sort $(OBJS:%.o=$(PATHOBJS)%.o))
 OBJS += $(BINOUT)exports.o
 
 USE_KERNEL_LIBS = 1
+
 CFLAGS = -fsingle-precision-constant -Os -G0 -Wall
 CXXFLAGS = $(CFLAGS) -fno-exceptions
 ASFLAGS = $(CFLAGS)
-LDFLAGS += -nostartfiles
+LDFLAGS += -nostartfiles -nostdlib
 CFLAGS += -I$(PSPSDK)/../include
-LIBS = -lpsppower -lpspgum -lpspgu -lpspge -lm
+# -Wl,--defsym,_exit=0
+LIBS = -lpsppower -lpspgum -lpspgu -lpspdebug -lpspge -lm -lpspsystemctrl_kernel
  
 PSPSDK=$(shell psp-config --pspsdk-path)
 include $(PSPSDK)/lib/build_prx.mak
