@@ -82,6 +82,7 @@ int displaySetFrameBuf(void *frameBuf, int bufferwidth, int pixelformat, int syn
       sceGuViewport(2048, 2048, SCR_WIDTH, SCR_HEIGHT);
 
       sceGuDisable(GU_BLEND);
+      sceGuDisable(GU_TEXTURE_2D);
       sceGuDisable(GU_CULL_FACE);
       
       sceGumMatrixMode(GU_PROJECTION);
@@ -98,7 +99,7 @@ int displaySetFrameBuf(void *frameBuf, int bufferwidth, int pixelformat, int syn
         static float deg = 45.0f;
         const float rad = 3.14f/180.0f;
         const ScePspFVector3 t = {1.435f, -0.72f, -2.0f};
-        const ScePspFVector3 s = {0.1f, 0.1f, 0.1f};
+        const ScePspFVector3 s = {0.09f, 0.09f, 0.09f};
         sceGumTranslate(&t);
         sceGumScale(&s);
         sceGumRotateY(rad * deg * 1.2f);
@@ -131,23 +132,21 @@ int displaySetFrameBuf(void *frameBuf, int bufferwidth, int pixelformat, int syn
 
       sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_NORMAL_32BITF |
       GU_VERTEX_32BITF | GU_TRANSFORM_3D, CUBE_VERT_COUNT, NULL, cube);
-
       
-      /*
       sceGuDisable(GU_LIGHT0);
       sceGuDisable(GU_LIGHTING);
        
       {
-        const ScePspFVector3 s = {1.1f, 1.1f, 1.1f};
+        const ScePspFVector3 s = {1.09f, 1.09f, 1.09f};
         sceGumScale(&s);
       }
-       
+      
       sceGuEnable(GU_BLEND);
       sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
   
       sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_NORMAL_32BITF |
       GU_VERTEX_32BITF | GU_TRANSFORM_3D, CUBE_VERT_COUNT, NULL, cube);
-      */
+      
       
       sceGuCopyImage(GU_PSM_8888,
         0, 0, 512, 32, 512, vramBackup,
@@ -211,7 +210,7 @@ int module_start(SceSize ags, void *agp) {
   
   cube = (struct Vertex*)(((unsigned int)sceKernelGetBlockHeadAddr(cubeId) + 63) & ~63);
   
-  unsigned int cubeColor = 0xff8b4513;
+  unsigned int cubeColor = 0x808b4513;
 
   // front
   cube[0]  = (struct Vertex){ cubeColor,  0.0f,  0.0f,  1.0f,   1.0f, -1.0f,  1.0f };
