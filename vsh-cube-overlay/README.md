@@ -1,28 +1,33 @@
 # VSH Cube Overlay - Plugin
-
 A VSH plugin that displays a rotating 3D cube overlay on top of the XMB using PSPGU.
 
 ## Technical Details
 
-### VRAM Management by Model
+### VRAM Management and Depth Buffer Strategy
 
 The VSH actively uses VRAM through parallel threads, which creates specific constraints for depth buffer management in overlayed 3D graphics. Since we hook `setDisplayBuffer` which executes in one thread, while VRAM is potentially accessed by other threads, careful placement is crucial to avoid concurrency issues and/or data corruption.
 
-#### PSP Slim/3000+ (Extended VRAM ≥ 0x200000)
+#### Generic Approach
 
-These models have additional VRAM, allowing the depth buffer to be placed at `0x200000` without apparent overlap with other VRAM data buffers. However, testing has not been performed on PSP Go, and an analysis of `paf.prx` would ensure complete safety across all models.
+We use a unified strategy across all PSP models for two reasons:
+- PSP Fat models have limited VRAM (< 0x200000), making extended VRAM placement impossible
+- Even on models with extended VRAM, we cannot guarantee that the VSH won't access memory beyond the standard VRAM range, making this approach cleaner and safer
 
-#### PSP Fat (Standard VRAM < 0x200000)
-On these models, VRAM space is limited which imposes a sorcery:
+**Implementation:**
 
-1. The second half of the framebuffer (starting at `0x44000`) is copied to a temporary buffer
-2. This area temporarily becomes our depth buffer for 3D rendering
-3. After rendering, the area is restored with the saved data
+The depth buffer is placed at the beginning of the current framebuffer (offset 0x0 relative to the framebuffer address). Since the framebuffer address is dynamic and provided by the VSH's `setDisplayBuffer` call, our depth buffer location follows it. A region of 512×32 pixels is saved to a temporary backup buffer before rendering, then restored afterward.
+
+**Rendering Optimizations:**
+
+- **Optimized copy operations:** Only the depth buffer region (512×32 pixels) is saved and restored, matching the 64-pixel width of the depth buffer
+- **Frame-split processing:** Depth buffer operations (clear) are processed in the first half of the frame, while drawing occurs in the second half
+- **Depth buffer dimensions:** The depth buffer width (64 pixels) matches exactly the rendering area width to ensure proper depth testing
+- **Scissor test:** A scissor region is applied to constrain rendering to a specific 64×64 area on screen
+- **Threads Scheduler:** We ensure the thread scheduler is ready before processing any GU commands in the hook
 
 **Consequences:**
-- Constant CPU boost in VSH to compensate for performance loss due to copy operations
-- Limited rendering area: The cube/3D model must stay within the first vertical half of the framebuffer
-- More verbose but safe
+
+- Limited rendering area: The cube is rendered in a constrained region of the screen
 
 ### Special Thanks
 Thanks to Acid_Snake and Isage for their time and dedication.
