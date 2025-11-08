@@ -59,9 +59,9 @@ int displaySetFrameBuf(void *frameBuf, int bufferwidth, int pixelformat, int syn
     if (list && magic == 1) {
       
       magic = 2;
-
+      
       sceGeSaveContext(ctx);
-      int state = sceKernelSuspendDispatchThread(); 
+      int state = sceKernelSuspendDispatchThread();
       int intr = sceKernelCpuSuspendIntr();
       
       // pspDebugScreenSetBase((u32*)(0x40000000 | (u32)frame));
@@ -73,18 +73,19 @@ int displaySetFrameBuf(void *frameBuf, int bufferwidth, int pixelformat, int syn
 
       sceGuStart(GU_DIRECT, list);
       
+      sceGuDisable(GU_DEPTH_TEST);
+      sceGuDisable(GU_BLEND);
+      sceGuDisable(GU_TEXTURE_2D);
+      sceGuDisable(GU_CULL_FACE);
+      
       sceGuCopyImage(GU_PSM_8888,
-        0, 0, 512, 32, 512, depthBuf,
+        0, 0, 480, 64, 512, depthBuf,
         0, 0, 512, vramBackup
       );
 
       sceGuOffset(2048 - (SCR_WIDTH/2), 2048 - (SCR_HEIGHT/2));
       sceGuViewport(2048, 2048, SCR_WIDTH, SCR_HEIGHT);
 
-      sceGuDisable(GU_BLEND);
-      sceGuDisable(GU_TEXTURE_2D);
-      sceGuDisable(GU_CULL_FACE);
-      
       sceGumMatrixMode(GU_PROJECTION);
       sceGumLoadIdentity();
       sceGumPerspective(50.0f, 16.0f/9.0f, 1.0f, 100.0f);
@@ -147,9 +148,8 @@ int displaySetFrameBuf(void *frameBuf, int bufferwidth, int pixelformat, int syn
       sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_NORMAL_32BITF |
       GU_VERTEX_32BITF | GU_TRANSFORM_3D, CUBE_VERT_COUNT, NULL, cube);
       
-      
       sceGuCopyImage(GU_PSM_8888,
-        0, 0, 512, 32, 512, vramBackup,
+        0, 0, 480, 64, 512, vramBackup,
         0, 0, 512, depthBuf
       );
       
@@ -183,6 +183,11 @@ int thread(SceSize ags, void *agp) {
   return 0;
 }
 
+void* getUserMemoryBlock(unsigned int align, char* name, int mp, unsigned int size) {
+  SceUID uid = sceKernelAllocPartitionMemory(mp, name, PSP_SMEM_Low, size + align, NULL);
+  return (void*)((((align - 1) + (unsigned int)sceKernelGetBlockHeadAddr(uid)) & ~(align - 1)));
+}
+
 int module_start(SceSize ags, void *agp) {
   magic = 0;
   vramBackup = NULL;
@@ -192,23 +197,14 @@ int module_start(SceSize ags, void *agp) {
 
   unlockMemory();
 
-  SceUID vramId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER,
-  "vram_block", PSP_SMEM_Low, VRAM_BACKUP_BYTE_COUNT + 64, NULL);
-  vramBackup = (void*)(/*0x40000000 | */(((unsigned int)sceKernelGetBlockHeadAddr(vramId) + 63) & ~63));
-
-  SceUID listId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER,
-  "list_block", PSP_SMEM_Low, 2048 + 64, NULL);
-  list = (u32*)(((unsigned int)sceKernelGetBlockHeadAddr(listId) + 63) & ~63);
-
-  SceUID ctxId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_KERNEL,
-  "ctx_block", PSP_SMEM_Low, sizeof(PspGeContext)+16, NULL);
-  ctx = (void*)(((unsigned int)sceKernelGetBlockHeadAddr(ctxId) + 15) & ~15);
-
-  const unsigned int cubeSize = CUBE_VERT_COUNT * sizeof(struct Vertex);
-  SceUID cubeId = sceKernelAllocPartitionMemory(PSP_MEMORY_PARTITION_USER,
-  "cube_block", PSP_SMEM_Low, cubeSize + 64, NULL);
+  #define MP PSP_MEMORY_PARTITION_USER
   
-  cube = (struct Vertex*)(((unsigned int)sceKernelGetBlockHeadAddr(cubeId) + 63) & ~63);
+  vramBackup = getUserMemoryBlock(64, "vram_block", MP, VRAM_BACKUP_BYTE_COUNT);
+  list = (u32*)getUserMemoryBlock(64, "list_block", MP, 2048);
+  ctx = getUserMemoryBlock(64, "ctx_block", MP, sizeof(PspGeContext));
+  
+  const unsigned int cubeSize = CUBE_VERT_COUNT * sizeof(struct Vertex);
+  cube = (struct Vertex*)getUserMemoryBlock(64, "cube_block", MP, cubeSize);
   
   unsigned int cubeColor = 0x808b4513;
 
