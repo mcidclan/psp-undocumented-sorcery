@@ -156,6 +156,12 @@ int displaySetFrameBuf(void *frameBuf, int bufferwidth, int pixelformat, int syn
       sceGuFinish();
       sceGuSync(GU_SYNC_FINISH, GU_SYNC_WHAT_DONE);
       
+      // wait for ge to finish since sceGuSync seems to be broken in this hook context (maybe an user level issue, needs confirmation)
+      u32 a = 0xfff;
+      while (--a) {
+        asm volatile("nop;nop;nop;nop;nop;sync;");
+      }
+      
       sceKernelCpuResumeIntrWithSync(intr);
       sceKernelResumeDispatchThread(state);
       sceGeRestoreContext(ctx);
