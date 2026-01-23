@@ -65,6 +65,8 @@ int main() {
   if(!tex) {
     sceKernelExitGame();
   }
+  sceKernelDcacheWritebackInvalidateAll();
+  
   guInit();
   SceCtrlData ctl;
   do {
