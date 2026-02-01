@@ -131,18 +131,21 @@ void _cancelOverclock() {
   
   int intr;
   suspendCpuIntr(intr);
-  
-  hw(0xbc200000) = 511 << 16 | 511;
-  hw(0xBC200004) = 511 << 16 | 511;
-  hw(0xBC200008) = 511 << 16 | 511;
-  sync();
 
   const u32 pllMul = hw(0xbc1000fc);
   const u32 msb = pllMul & 0xffff;
   const u32 _den = msb & 0xff;
   u32 _num = msb >> 8;
   
-  if (_den && ((_num / _den) > 10)) {
+  const int overclocked = (int)(_den && ((_num / _den) > 10));
+  
+  if (overclocked) {
+    
+    hw(0xbc200000) = 511 << 16 | 511;
+    hw(0xBC200004) = 511 << 16 | 511;
+    hw(0xBC200008) = 511 << 16 | 511;
+    sync();
+    
     // u32 index = 2;
     /*
     hw(0xbc100068) = 0x80 | index;
@@ -169,9 +172,11 @@ void _cancelOverclock() {
     while (--i) {
       delayPipeline();
     }
-    
-    resumeCpuIntr(intr);
-    
+  }
+
+  resumeCpuIntr(intr);
+
+  if (overclocked) {
     scePowerSetClockFrequency(TARGET_FREQUENCY, TARGET_FREQUENCY, TARGET_FREQUENCY/2);
   }
 }
