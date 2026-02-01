@@ -51,6 +51,7 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_VFPU | PSP_THREAD_ATTR_USER);
   kcall((int (*)(void))(0x80000000 | (unsigned int)_cancelOverclock));
 
 // modify this value to compare results
+#define DEFAULT_FREQUENCY     333
 #define THEORETICAL_FREQUENCY (444 /*+ 37/4*/)
 #define PLL_MUL_MSB           0x0124
 
@@ -60,7 +61,7 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_VFPU | PSP_THREAD_ATTR_USER);
 int _setOverclock() {
   
   // note: needs to be 333 to be able to reach 444mhz
-  const int INITIAL_FREQUENCY = 333;
+  const int INITIAL_FREQUENCY = DEFAULT_FREQUENCY;
   
   scePowerSetClockFrequency(INITIAL_FREQUENCY, INITIAL_FREQUENCY, INITIAL_FREQUENCY/2);
 
@@ -117,11 +118,9 @@ int _setOverclock() {
   return 0;
 }
 
-unsigned int numtest = 0;
-unsigned int dentest = 0;
 void _cancelOverclock() {
   
-  const int TARGET_FREQUENCY = 333;
+  const int TARGET_FREQUENCY = DEFAULT_FREQUENCY;
     
   float ratio = 1.0f;
   const u32 den = 19;
@@ -191,11 +190,9 @@ int main() {
   cancelOverclock();
   setOverclock();
   pspDebugScreenClear();
-  
-  // scePowerSetClockFrequency(333, 333, 166);
 
   u32 switchOverclock = 0;
-  unsigned int lastFreq = 444;
+  unsigned int lastFreq = THEORETICAL_FREQUENCY;
 
   u64 prev, now, fps = 0, maxFps = 0, counter = 0;
   const u64 res = sceRtcGetTickResolution();
@@ -215,14 +212,14 @@ int main() {
     pspDebugScreenPrintf("Counter: %llu    ", counter++);
     
     if (!switchOverclock && (ctl.Buttons & PSP_CTRL_TRIANGLE)) {
-      const int freq = lastFreq == 333 ? 444 : 333;
-      if (freq == 444) {
+      const int freq = lastFreq == DEFAULT_FREQUENCY ? THEORETICAL_FREQUENCY : DEFAULT_FREQUENCY;
+      if (freq == THEORETICAL_FREQUENCY) {
         setOverclock();
-        lastFreq = 444;
+        lastFreq = THEORETICAL_FREQUENCY;
       }
       else {
         cancelOverclock();
-        lastFreq = 333;
+        lastFreq = DEFAULT_FREQUENCY;
       }
       switchOverclock = 1;
       maxFps = 0;
@@ -232,7 +229,7 @@ int main() {
     }
     
     pspDebugScreenSetXY(1, 3);
-    pspDebugScreenPrintf("Switch to %u MHZ", lastFreq);
+    pspDebugScreenPrintf("Switch to %u MHz", lastFreq);
     
     //
     sceRtcGetCurrentTick(&now);

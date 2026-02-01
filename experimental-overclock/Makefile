@@ -17,7 +17,7 @@ CFLAGS = -Os -G0 -Wall -fno-pic -I./kernel/src \
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti  -std=c++11
 ASFLAGS = $(CFLAGS)
 
-LIBS = -lpsppower -lpspgu
+LIBS = -lpsppower
 
 EXTRA_CLEAN = kcall.S
 PSP_EBOOT_SFO = $(BINOUT)PARAM.SFO
