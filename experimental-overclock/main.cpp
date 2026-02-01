@@ -4,8 +4,6 @@
 #include <pspkernel.h>
 #include <pspctrl.h>
 #include <psprtc.h>
-#include <psputilsforkernel.h>
-
 #include "kcall.h"
 
 PSP_MODULE_INFO("exp-overclock", 0, 1, 1);
@@ -26,46 +24,79 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_VFPU | PSP_THREAD_ATTR_USER);
     "sync       \n"                        \
   )
 
-#define overclock()                                                            \
-  sceKernelIcacheInvalidateAll();                                              \
-  kcall((int (*)(void))(0x80000000 | (unsigned int)setOverclock));
+#define suspendCpuIntr(var) \
+  asm volatile(             \
+    "mfic  %0, $0 \n"       \
+    "mtic  $0, $0 \n"       \
+    "sync         \n"       \
+    : "=r"(var)             \
+    :                       \
+    : "$8"                  \
+  )
+
+#define resumeCpuIntr(var)  \
+  asm volatile(             \
+    "mtic  %0, $0 \n"       \
+    "sync         \n"       \
+    :                       \
+    : "r"(var)              \
+  )
+
+// note: needs to be 333 to be able to reach 444mhz
+#define INITIAL_FREQUENCY 333
 
 // modify this value to compare results
-#define THEORETICAL_FREQUENCY 333 /*444*/ /*433*/
+#define THEORETICAL_FREQUENCY (444 /*+ 37/4*/)
 
+#define setOverclock()                                                         \
+  sceKernelIcacheInvalidateAll();                                              \
+  kcall((int (*)(void))(0x80000000 | (unsigned int)_setOverclock));
+
+#define cancelOverclock()                                                      \
+  sceKernelIcacheInvalidateAll();                                              \
+  kcall((int (*)(void))(0x80000000 | (unsigned int)_cancelOverclock));
+  
 // Note: Only tested on Slim, should be called from SC side
-// 433 ok, 444 ok - approaching the stability limit
-int setOverclock() {
+// 444 ok - approaching the stability limit
+// base * (num / den) * ratio, with base = 37 and ratio = 1
+int _setOverclock() {
   
-  const u32 den = 13;
-  const u32 base = 37;
-  const u32 num = (den * THEORETICAL_FREQUENCY) / base;
-  
-  scePowerSetClockFrequency(333, 333, 166);
-  
-  // set all clock ratios to 1:1
-  hw(0xbc200000) = 511 << 16 | 511;
-  hw(0xBC200004) = 511 << 16 | 511;
-  hw(0xBC200008) = 511 << 16 | 511;
-  sync();
-  
-  //
-  int intr = sceKernelCpuSuspendIntr();
+  scePowerSetClockFrequency(INITIAL_FREQUENCY, INITIAL_FREQUENCY, INITIAL_FREQUENCY/2);
 
-  const u32 index = 0x5; // set index, to pll ratio 1
+  // set index, to pll ratio 1
+  const u32 index = 5; // hw(0xbc100068) & 0xf;
   
+  float ratio = 1.0f;
+  switch (index) {
+    // incomplete
+    case 5: ratio = 1.0f; break;
+  }
+  
+  const u32 den = 19;
+  const float base = 37;
+  const u32 num = (u32)(((float)(THEORETICAL_FREQUENCY * den)) / (base * ratio));
+  
+  int intr;
+  suspendCpuIntr(intr);
+  
+  u32 _num = (u32)(((float)(INITIAL_FREQUENCY * den)) / (base * ratio));
+  const u32 msb = 0x0124; // unknown
+
+  // throttle all clock domains before overclocking PLL
+  hw(0xbc200000) = 32 << 16 | 511;
+  hw(0xBC200004) = 32 << 16 | 511;
+  hw(0xBC200008) = 32 << 16 | 511;
+  sync();
+    
   // set bit bit 7 to apply index, wait until hardware clears it
   hw(0xbc100068) = 0x80 | index;
   do {
     delayPipeline();
   } while (hw(0xbc100068) != index);
 
-  // 0x4e - 222mhz
-  // 0x75 - 333mhz
-  
-  u32 _num = 0x75;
-  const u32 msb = 0x0124;
-  
+  // const int way = _num > num ? -1 : 1;
+  // while (_num != num) {
+
   // loop until the numerator reaches the target value,
   // and so, progressively increasing clock frequencies
   while (_num <= num) {
@@ -75,32 +106,42 @@ int setOverclock() {
     delayPipeline();
     _num++;
   }
-  // 0x93 - 333mhz to ~418mhz
-  // 0x9c - 333mhz to ~444mhz
-  // 0xa0 - 333mhz to ~455mhz
 
-  // base * (num / den) * ratio
-  // with base = 37; num = 0x93, 0x9c, 0xa0; den = 13
-  
-  sceKernelCpuResumeIntrWithSync(intr);
-  
+  // unthrottle all clock domains after overclocking PLL
+  hw(0xbc200000) = 511 << 16 | 511;
+  hw(0xBC200004) = 511 << 16 | 511;
+  hw(0xBC200008) = 511 << 16 | 511;
+  sync();
+
+  // wait for clock stability, signal propagation and pipeline drain
   {
-    // wait for clock stability, signal propagation and pipeline drain
-    u32 i = 0xffff;
+    u32 i = 0xfffff;
     while (--i) {
       delayPipeline();
     }
   }
   
-  sceKernelDcacheInvalidateAll();
-  sceKernelIcacheInvalidateAll();
+  resumeCpuIntr(intr);
   
   return 0;
 }
 
-int cancelOverclock() {
-  sceKernelDcacheWritebackInvalidateAll();
-  sceKernelIcacheInvalidateAll();
+int _cancelOverclock() {
+  const u32 index = 2;
+  // set bit bit 7 to apply index, wait until hardware clears it
+  hw(0xbc100068) = 0x80 | index;
+  do {
+    delayPipeline();
+  } while (hw(0xbc100068) != index);
+  
+  hw(0xbc200000) = 32 << 16 | 511;
+  hw(0xBC200004) = 32 << 16 | 511;
+  hw(0xBC200008) = 32 << 16 | 511;
+  sync();
+  
+  hw(0xbc1000fc) = 0x01240901;
+  delayPipeline();
+    
   scePowerSetClockFrequency(333, 333, 166);
   return 0;
 }
@@ -115,9 +156,9 @@ int main() {
     return 0;
   }
 
-  overclock();
+  // cancelOverclock();
+  setOverclock();
   // scePowerSetClockFrequency(333, 333, 166);
-
 
   u64 prev, now, fps = 0, maxFps = 0, counter = 0;
   const u64 res = sceRtcGetTickResolution();
