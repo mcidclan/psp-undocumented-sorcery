@@ -106,7 +106,7 @@ int _setOverclock() {
 
   // wait for clock stability, signal propagation and pipeline drain
   {
-    u32 i = 0xfffff;
+    u32 i = 0x1fffff;
     while (--i) {
       delayPipeline();
     }
@@ -166,7 +166,7 @@ void _cancelOverclock() {
       delayPipeline();
     } while (hw(0xbc100068) != index);
 
-    u32 i = 0xfffff;
+    u32 i = 0x1fffff;
     while (--i) {
       delayPipeline();
     }
