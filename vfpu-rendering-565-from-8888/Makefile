@@ -9,7 +9,7 @@ PATHFILES = $(CPP_FILES)
 OBJS = $(notdir $(patsubst %.cpp, %.o, $(patsubst %.S, %.o, $(PATHFILES))))
 OBJS := $(sort $(OBJS:%.o=$(PATHOBJS)%.o))
 
-CFLAGS = -Ofast -G0 -Wall -fno-pic -I./kernel/src
+CFLAGS = -Os -G0 -Wall -fno-pic -I./kernel/src
 # \
 #         -Wextra -Werror
 

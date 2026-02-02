@@ -16,7 +16,7 @@ OBJS := $(sort $(OBJS:%.o=$(PATHOBJS)%.o))
 PSPSDK = $(shell psp-config --pspsdk-path)
 PSPDEV = $(shell psp-config --pspdev-path)
 
-CFLAGS = -I. -I$(PSPSDK)/include -I$(PSPDEV)/psp/sdk/include -Ofast -G0 -Wall -fno-pic \
+CFLAGS = -I. -I$(PSPSDK)/include -I$(PSPDEV)/psp/sdk/include -Os -G0 -Wall -fno-pic \
          -I./kernel/src -D_PSP_FW_VERSION=660 \
          -Wextra -Werror
 
