@@ -63,7 +63,7 @@ int _setOverclock() {
     const u32 lsb = _num << 8 | PLL_DEN;
     const u32 multiplier = (PLL_MUL_MSB << 16) | lsb;
     hw(0xbc1000fc) = multiplier;
-    delayPipeline();
+    sync();
     _num++;
   }
   
@@ -79,7 +79,7 @@ void _cancelOverclock() {
   const int TARGET_FREQUENCY = DEFAULT_FREQUENCY;
   const float ratio = 1.0f;
   const unsigned int num = (u32)(((float)(TARGET_FREQUENCY * PLL_DEN)) / (PLL_BASE_FREQ * ratio));
-  
+
   int intr;
   suspendCpuIntr(intr);
   
@@ -102,7 +102,7 @@ void _cancelOverclock() {
       const u32 lsb = _num << 8 | PLL_DEN;
       const u32 multiplier = (PLL_MUL_MSB << 16) | lsb;
       hw(0xbc1000fc) = multiplier;
-      delayPipeline();
+      sync();
     }
     
     const int index = 5;
