@@ -60,12 +60,11 @@ int _setOverclock() {
     const u32 lsb = _num << 8 | PLL_DEN;
     const u32 multiplier = (PLL_MUL_MSB << 16) | lsb;
     hw(0xbc1000fc) = multiplier;
-    sync();
+    delayPipeline(); /*sync();*/
     _num += 1;
   }
   
   hw(0xbc1000fc) |= (1 << 16);
-  sync();
   
   settle();
   resetDomains();
@@ -76,27 +75,12 @@ int _setOverclock() {
 
 void _cancelOverclock() {
   
-  
   u32 _num = (u32)(((float)(THEORETICAL_FREQUENCY * PLL_DEN)) / (PLL_BASE_FREQ * PLL_RATIO));
   const unsigned int num = (u32)(((float)(DEFAULT_FREQUENCY * PLL_DEN)) / (PLL_BASE_FREQ * PLL_RATIO));
-  // const unsigned int limit = (unsigned int)(9.0f * (1.0f / PLL_RATIO));
   
   int intr;
   suspendCpuIntr(intr);
   
-  /*
-  const u32 pllIdx = hw(0xbc100068);
-  const u32 pllMul = hw(0xbc1000fc);
-  sync();
-  
-  const u32 msb = pllMul & 0xffff;
-  const u32 _den = msb & 0xff;
-  u32 _num = msb >> 8;
-  
-  const int overclocked = (int)(_den && ((_num / _den) > 9)); //limit
-  
-  if (overclocked && pllIdx == PLL_RATIO_INDEX) {
-  */
   const u32 pllMul = hw(0xbc1000fc);
   sync();
 
@@ -111,7 +95,7 @@ void _cancelOverclock() {
       const u32 lsb = _num << 8 | PLL_DEN;
       const u32 multiplier = (PLL_MUL_MSB << 16) | lsb;
       hw(0xbc1000fc) = multiplier;
-      sync();
+      delayPipeline(); /*sync();*/
     }
     
     hw(0xbc100068) = 0x80 | PLL_RATIO_INDEX;
@@ -124,10 +108,6 @@ void _cancelOverclock() {
   }
   
   resumeCpuIntr(intr);
-  
-  //if (overclocked) {
-  //  scePowerSetClockFrequency(TARGET_FREQUENCY, TARGET_FREQUENCY, TARGET_FREQUENCY/2);
-  //}
 }
 
 #define dumpPLLRegs()                                                          \
