@@ -51,6 +51,8 @@ int _setOverclock() {
   const u32 num = (u32)(((float)(THEORETICAL_FREQUENCY * PLL_DEN)) / (PLL_BASE_FREQ * PLL_RATIO));
     
   int intr;
+  int state = sceKernelSuspendDispatchThread();
+  
   suspendCpuIntr(intr);
     
   // set bit bit 7 to apply index
@@ -81,6 +83,7 @@ int _setOverclock() {
   settle();
   
   resumeCpuIntr(intr);
+  sceKernelResumeDispatchThread(state);
 
   return 0;
 }
@@ -93,16 +96,20 @@ void _cancelOverclock() {
   const unsigned int num = (u32)(((float)(DEFAULT_FREQUENCY * PLL_DEN)) / (PLL_BASE_FREQ * PLL_RATIO));
 
   int intr;
-  
+  int state = sceKernelSuspendDispatchThread();
+
   suspendCpuIntr(intr);
   const u32 pllMul = hw(0xbc1000fc); sync();
   const int overclocked = pllMul & (1 << 16);
+  
   resumeCpuIntr(intr);
+  sceKernelResumeDispatchThread(state);
 
   if (overclocked) {
     
     scePowerSetClockFrequency(DEFAULT_FREQUENCY, DEFAULT_FREQUENCY, DEFAULT_FREQUENCY/2);
 
+    state = sceKernelSuspendDispatchThread();
     suspendCpuIntr(intr);
     // loop until the numerator reaches the target value,
     // and so, progressively increasing clock frequencies
@@ -130,6 +137,8 @@ void _cancelOverclock() {
     settle();
     resumeCpuIntr(intr);
   }
+  
+  sceKernelResumeDispatchThread(state);
 }
 
 static inline void initOverclock() {
