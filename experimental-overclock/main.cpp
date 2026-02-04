@@ -20,8 +20,10 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_VFPU | PSP_THREAD_ATTR_USER);
 #define unlockMemory()                                                         \
   kcall((int (*)(void))(0x80000000 | (unsigned int)_unlockMemory));
 
-#define resetDomainRatios()                                                    \
+#define kernelResetDomains()                                                    \
   kcall((int (*)(void))(0x80000000 | (unsigned int)_resetDomains));
+
+#define DELAY_AFTER_CLOCK_CHANGE 300000
 
 // modify this value to compare results
 #define DEFAULT_FREQUENCY     333
@@ -42,15 +44,15 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_VFPU | PSP_THREAD_ATTR_USER);
 
 int _setOverclock() {
 
+  // note: needs to be 333 to be able to reach 444mhz
+  scePowerSetClockFrequency(DEFAULT_FREQUENCY, DEFAULT_FREQUENCY, DEFAULT_FREQUENCY/2);
+  
   u32 _num = (u32)(((float)(DEFAULT_FREQUENCY * PLL_DEN)) / (PLL_BASE_FREQ * PLL_RATIO));
   const u32 num = (u32)(((float)(THEORETICAL_FREQUENCY * PLL_DEN)) / (PLL_BASE_FREQ * PLL_RATIO));
-
-  // note: needs to be 333 to be able to reach 444mhz
-  //scePowerSetClockFrequency(DEFAULT_FREQUENCY, DEFAULT_FREQUENCY, DEFAULT_FREQUENCY/2);
-  
+    
   int intr;
   suspendCpuIntr(intr);
-
+    
   // set bit bit 7 to apply index
   // then wait until hardware clears bit 7
   processPLL();
@@ -85,17 +87,23 @@ int _setOverclock() {
 
 void _cancelOverclock() {
   
+  // scePowerSetClockFrequency(DEFAULT_FREQUENCY, DEFAULT_FREQUENCY, DEFAULT_FREQUENCY/2);
+  
   u32 _num = (u32)(((float)(THEORETICAL_FREQUENCY * PLL_DEN)) / (PLL_BASE_FREQ * PLL_RATIO));
   const unsigned int num = (u32)(((float)(DEFAULT_FREQUENCY * PLL_DEN)) / (PLL_BASE_FREQ * PLL_RATIO));
 
   int intr;
-  suspendCpuIntr(intr);
   
+  suspendCpuIntr(intr);
   const u32 pllMul = hw(0xbc1000fc); sync();
   const int overclocked = pllMul & (1 << 16);
-  
+  resumeCpuIntr(intr);
+
   if (overclocked) {
     
+    scePowerSetClockFrequency(DEFAULT_FREQUENCY, DEFAULT_FREQUENCY, DEFAULT_FREQUENCY/2);
+
+    suspendCpuIntr(intr);
     // loop until the numerator reaches the target value,
     // and so, progressively increasing clock frequencies
     decreasePLL();
@@ -120,18 +128,16 @@ void _cancelOverclock() {
     */
     
     settle();
+    resumeCpuIntr(intr);
   }
-  resumeCpuIntr(intr);
 }
 
-void intOverclock() {
+static inline void initOverclock() {
   sceKernelIcacheInvalidateAll();
   unlockMemory();
   
-  resetDomainRatios();
-  // note: needs to be 333 to be able to reach 444mhz
-  scePowerSetClockFrequency(DEFAULT_FREQUENCY, DEFAULT_FREQUENCY, DEFAULT_FREQUENCY/2);
   cancelOverclock();
+  sceKernelDelayThread(DELAY_AFTER_CLOCK_CHANGE);
 }
 
 int main() {
@@ -145,7 +151,7 @@ int main() {
   }
 
   pspDebugScreenPrintf("Overclock Sample");
-  intOverclock();
+  initOverclock();
   pspDebugScreenClear();
 
   u32 switchOverclock = 0;
@@ -171,16 +177,16 @@ int main() {
     if (!switchOverclock && (ctl.Buttons & PSP_CTRL_TRIANGLE)) {
       const int freq = lastFreq == DEFAULT_FREQUENCY ? THEORETICAL_FREQUENCY : DEFAULT_FREQUENCY;
       if (freq == THEORETICAL_FREQUENCY) {
-        setOverclock();
         lastFreq = THEORETICAL_FREQUENCY;
+        setOverclock();
       }
       else {
-        cancelOverclock();
         lastFreq = DEFAULT_FREQUENCY;
+        cancelOverclock();
       }
       switchOverclock = 1;
       maxFps = 0;
-      sceKernelDelayThread(500000);
+      sceKernelDelayThread(DELAY_AFTER_CLOCK_CHANGE);
     }
     else if(!(ctl.Buttons & PSP_CTRL_TRIANGLE)) {
       switchOverclock = 0;

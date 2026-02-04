@@ -57,6 +57,7 @@
     ".set volatile          \n" \
     ".set noat              \n" \
                                 \
+    "  sync                 \n" \
     "  lui  $t0, 0xBC20     \n" \
     "  lui  $t1, 0xFF       \n" \
     "  ori  $t1, $t1, 0x1FF \n" \
@@ -209,3 +210,26 @@ static inline void _unlockMemory() {
     : "i"(PLL_RATIO_INDEX)      \
     : "$t0", "$t1", "memory"    \
   )
+
+
+// Set clock domains to ratio 1:1
+/*
+#define resetDomainRatios()          \
+  sync();                            \
+  hw(0xbc200000) = 511 << 16 | 511;  \
+  hw(0xBC200004) = 511 << 16 | 511;  \
+  hw(0xBC200008) = 511 << 16 | 511;  \
+  sync();
+*/
+
+// Wait for clock stability, signal propagation and pipeline drain
+/*
+#define settle()            \
+{                           \
+  sync();                   \
+  u32 i = 0x1fffff;         \
+  while (--i) {             \
+    delayPipeline();        \
+  }                         \
+}
+*/
