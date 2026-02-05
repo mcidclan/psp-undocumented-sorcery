@@ -6,6 +6,7 @@ TARGET = $(BINOUT)vfpusr
 CPP_FILES = $(shell ls $(PATHSRC)*.cpp)
 PATHFILES = $(CPP_FILES)
 
+BUILD_PRX = 1
 OBJS = $(notdir $(patsubst %.cpp, %.o, $(patsubst %.S, %.o, $(PATHFILES))))
 OBJS := $(sort $(OBJS:%.o=$(PATHOBJS)%.o))
 
