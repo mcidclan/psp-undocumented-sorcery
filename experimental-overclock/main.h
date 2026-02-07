@@ -11,8 +11,20 @@
     "vsync       \n"    \
     "vnop        \n"    \
     "vnop        \n"    \
+    "vnop        \n"    \
+    "vnop        \n"    \
+    "vnop        \n"    \
+    "vnop        \n"    \
+    "vnop        \n"    \
   )
 
+#define clearTags()       \
+  asm volatile (          \
+    "mtc0 $0, $28   \n"   \
+    "mtc0 $0, $29   \n"   \
+    "sync           \n"   \
+  )
+    
 #define delayPipeline()                    \
   asm volatile(                            \
     "nop; nop; nop; nop; nop; nop; nop \n" \
@@ -26,7 +38,7 @@
     ".set noat             \n" \
     "mfc0  %0, $12         \n" \
     "sync                  \n" \
-    "li    $t0, 0x0FFFFFFE \n" \
+    "li    $t0, 0xfffffffe \n" \
     "and   $t0, %0, $t0    \n" \
     "mtc0  $t0, $12        \n" \
     "sync                  \n" \
@@ -55,7 +67,7 @@
     : "r"(var)             \
     : "memory"             \
   )
-
+/*
 #define resetDomains()          \
   asm volatile(                 \
     ".set push              \n" \
@@ -78,7 +90,7 @@
     :                           \
     : "$t0", "$t1", "memory"    \
   )
-
+*/
 #define settle()                \
   asm volatile(                 \
     ".set push              \n" \
@@ -88,8 +100,8 @@
     ".set noat              \n" \
                                 \
     "sync                   \n" \
-    "lui  $t0, 0x20         \n" \
-    "ori  $t0, $t0, 0xFFFF  \n" \
+    "lui  $t0, 0x05         \n" \
+    "ori  $t0, $t0, 0x5555  \n" \
                                 \
     "1:                     \n" \
     "  nop                  \n" \
@@ -108,12 +120,12 @@
     :                           \
     : "$t0", "memory"           \
   )
-
+/*
 static inline int _resetDomains() {
   resetDomains();
   return 0;
 }
-
+*/
 static inline void _unlockMemory() {
   const u32 start = 0xbc000000;
   const u32 end   = 0xbc00002c;
@@ -122,7 +134,7 @@ static inline void _unlockMemory() {
   }
   sync();
 }
-
+/*
 #define increasePLL()           \
   asm volatile(                 \
     ".set push              \n" \
@@ -214,8 +226,8 @@ static inline void _unlockMemory() {
     : "i"(PLL_RATIO_INDEX)      \
     : "$t0", "$t1", "memory"    \
   )
-
-
+*/
+/*
 // Set clock domains to ratio 1:1
 #define resetDomainRatios()          \
   sync();                            \
@@ -223,7 +235,7 @@ static inline void _unlockMemory() {
   hw(0xBC200004) = 511 << 16 | 511;  \
   hw(0xBC200008) = 511 << 16 | 511;  \
   sync();
-
+*/
 
 // Wait for clock stability, signal propagation and pipeline drain
 /*
