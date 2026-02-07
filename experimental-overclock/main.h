@@ -6,6 +6,13 @@
     "sync       \n"     \
   )
 
+#define vfpuSync()      \
+  asm volatile(         \
+    "vsync       \n"    \
+    "vnop        \n"    \
+    "vnop        \n"    \
+  )
+
 #define delayPipeline()                    \
   asm volatile(                            \
     "nop; nop; nop; nop; nop; nop; nop \n" \
@@ -182,11 +189,11 @@ static inline void _unlockMemory() {
     ".set volatile          \n" \
     ".set noat              \n" \
                                 \
-    "  lui  $t0, 0xBC10     \n" \
-    "  ori  $t1, $zero, %0  \n" \
-    "  ori  $t1, $t1, 0x80  \n" \
-    "  sw   $t1, 0x68($t0)  \n" \
-    "  sync                 \n" \
+    "lui  $t0, 0xbc10       \n" \
+    "ori  $t1, $zero, %0    \n" \
+    "ori  $t1, $t1, 0x80    \n" \
+    "sw   $t1, 0x68($t0)    \n" \
+    "sync                   \n" \
                                 \
     "1:                     \n" \
     "  nop                  \n" \
@@ -198,10 +205,7 @@ static inline void _unlockMemory() {
     "  nop                  \n" \
                                 \
     "  lw    $t1, 0x68($t0) \n" \
-    "  ori   $t1, $t1, 0    \n" \
-    "  xori  $t1, $t1, %0   \n" \
-    "  sync                 \n" \
-                                \
+    "  xor   $t1, $t1, %0   \n" \
     "  bnez  $t1, 1b        \n" \
     "  nop                  \n" \
                                 \
@@ -213,14 +217,13 @@ static inline void _unlockMemory() {
 
 
 // Set clock domains to ratio 1:1
-/*
 #define resetDomainRatios()          \
   sync();                            \
   hw(0xbc200000) = 511 << 16 | 511;  \
   hw(0xBC200004) = 511 << 16 | 511;  \
   hw(0xBC200008) = 511 << 16 | 511;  \
   sync();
-*/
+
 
 // Wait for clock stability, signal propagation and pipeline drain
 /*
