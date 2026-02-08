@@ -1,10 +1,10 @@
 # Experimental 444mhz Overclock
 
 ## Description
-This is an experimental project for technical/educational purposes only, intended for developers only. Stability is not guaranteed, use with caution.
+This is an experimental project for technical purposes only, intended for developers only. Stability is not guaranteed, use with caution.
 
 ## Usage
-Use Triangle to switch between 333 and 444MHz
+Use Triangle to switch between 333 and 444MHz, or the frequency set in the ./overconfig.txt file
 
 ## Compatibility
 
