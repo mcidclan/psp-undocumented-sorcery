@@ -1,21 +1,6 @@
 # Experimental 444mhz Overclock
 
-## Description
-This is an experimental project for technical purposes only, intended for developers only. Stability is not guaranteed, use with caution.
-
-## Usage
-Use Triangle to switch between 333 and 444MHz, or the frequency set in the ./overconfig.txt file
-
-## Compatibility
-
-### 2000 and 3000
-Tested on PSP 2000 and 3000. Reaching 444MHz, which appears to be a limit before instabilities.
-
-### 1000
-Unfortunately on 1000, the limit seems to already be reached at 370MHz, from which instabilities start to manifest.
-
-### PSP Go
-Not tested
+Please see: [psp-444mhz-plugin](https://github.com/mcidclan/psp-444mhz-plugin)
 
 ## Disclamer
 This project and code are provided as-is without warranty. Users assume full responsibility for any implementation or consequences. Use at your own discretion and risk
