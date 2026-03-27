@@ -11,8 +11,7 @@ BUILD_PRX = 1
 OBJS = $(notdir $(patsubst %.cpp, %.o, $(patsubst %.S, %.o, $(PATHFILES))))
 OBJS := $(sort $(OBJS:%.o=$(PATHOBJS)%.o))
 
-CFLAGS = -Os -G0 -Wall -fno-pic \
-#         -Wextra -Werror
+CFLAGS = -Os -G0 -Wall -fno-pic
 
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -std=c++11
 ASFLAGS = $(CFLAGS)

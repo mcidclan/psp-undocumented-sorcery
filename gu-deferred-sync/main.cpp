@@ -5,11 +5,11 @@
 #include <pspkernel.h>
 #include <pspctrl.h>
 #include <pspintrman.h>
+#include <functional>
 
 PSP_MODULE_INFO("gu-deffered-sync", 0, 1, 1);
 PSP_HEAP_SIZE_KB(-1024);
 PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_VFPU | PSP_THREAD_ATTR_USER);
-
 
 #define LIST_SIZE   512
 #define BUF_WIDTH   512
@@ -18,6 +18,8 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_VFPU | PSP_THREAD_ATTR_USER);
 #define BUF_SIZE    0x44000
 #define BUF_COUNT   4
 #define DEPTH_BUF   (BUF_SIZE * BUF_COUNT)
+
+std::function<int()> displayDebug;
 
 int readyBufferIndexes[BUF_COUNT];
 int readyBufferCursor = 0;
@@ -37,17 +39,12 @@ typedef struct {
 extern GuDrawBuffer gu_draw_buffer;
 extern void* ge_edram_address;
 
-
 struct Vertex {
   u32 color;
   u16 x, y, z;
 } __attribute__((aligned(4)));
 
 static unsigned int __attribute__((aligned(16))) list[LIST_SIZE*BUF_COUNT] = {0};
-
-#include <functional>
-std::function<int()> displayDebug; 
-
 
 void updateDisplayBuffer() {
   
