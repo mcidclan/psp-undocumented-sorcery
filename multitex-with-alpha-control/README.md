@@ -11,7 +11,7 @@ The trick lies in the fact that, using the gu, the **alpha component** of 32-bit
 
 Note: This has been tested on real hardware (PSP Slim) and debug information may not display correctly in emulators.
 
-## Disclamer
+## Disclaimer
 This project and code are provided as-is without warranty. Users assume full responsibility for any implementation or consequences. Use at your own discretion and risk
 
 *m-c/d*
