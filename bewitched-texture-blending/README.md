@@ -28,9 +28,15 @@ make MODE=GU_POINTS clean; make MODE=GU_POINTS;     # Compile with GU_POINTS met
 
 ## Running The Project
 
+Place the EBOOT and both textures `tex0.png` and `tex1.png` in the same folder.  
+
 All samples have been tested on Slim, and the main one (Isolated Alpha) has been tested on Fat and 3000 in addition to Slim.  
   
 ***Do not test this on an emulator as the results may not be as expected.***  
+
+## Preview of the expected result
+
+![Preview](./preview.png)
 
 ## Disclaimer
 

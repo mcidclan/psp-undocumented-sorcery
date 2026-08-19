@@ -6,6 +6,7 @@ TARGET = $(BINOUT)mod
 GP_MODE = 0
 GU_POINTS = 1
 
+BUILD_PRX = 1
 ifeq ($(MODE),565)
 MAIN = main_565
 else ifeq ($(MODE),GU_POINTS)
