@@ -1,0 +1,7 @@
+*.o
+*.PBP
+*.SFO
+*.prx
+*.h264
+*.mp4
+usbhostfs_pc
