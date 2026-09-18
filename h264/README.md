@@ -1,6 +1,6 @@
 # H264 Simple Sample Code
 
-convert your video into frame.h264 file using something like:  
+convert your video into frames.h264 file using something like:  
 
 ```bash
 ffmpeg -i video.mp4 -an -c:v libx264 -profile:v main \
@@ -13,5 +13,6 @@ ffmpeg -i video.mp4 -an -c:v libx264 -profile:v main \
 ```
 
 Put the frames.h264 with the EBOOT in the same folder before reading.  
+*Note: Real hardware only.*  
 
 m-c/d
